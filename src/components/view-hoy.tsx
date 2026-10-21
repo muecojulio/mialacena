@@ -57,7 +57,7 @@ export function Hoy() {
 
       <button
         type="button"
-        onClick={() => setView(current ? "lista" : "lista")}
+        onClick={() => setView("lista")}
         className="rounded-3xl border border-line bg-card p-5 text-left transition-transform duration-150 ease-out active:scale-[0.96]"
       >
         <div className="flex items-center justify-between gap-3">
