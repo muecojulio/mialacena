@@ -24,6 +24,11 @@ export function parseQty(raw: string): number {
   return Math.round(n * 100) / 100;
 }
 
+/** «1 producto», «5 productos». */
+export function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 export function stamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";

@@ -24,7 +24,16 @@ function Privacidad() {
           <h2 className="font-medium">Qué se queda aquí</h2>
           <p className="mt-2 text-stone">
             Productos, marcas, cantidades, precios y listas viven en el almacenamiento local del navegador.
-            Si borras los datos del sitio, se van. Otro teléfono no las ve.
+            Si borras los datos del sitio, se van. Otro teléfono no las ve, a menos que le cargues un
+            respaldo.
+          </p>
+        </section>
+        <section className="rounded-3xl bg-card p-5 text-sm leading-relaxed">
+          <h2 className="font-medium">Respaldo</h2>
+          <p className="mt-2 text-stone">
+            «Guardar respaldo» arma en tu teléfono un archivo con tu despensa, tus listas y tus precios;
+            no pasa por ningún servidor. Tú eliges dónde dejarlo, así que trátalo como algo personal.
+            «Cargar respaldo» lo lee en el otro teléfono y reemplaza lo que haya ahí.
           </p>
         </section>
         <section className="rounded-3xl bg-card p-5 text-sm leading-relaxed">
@@ -44,7 +53,10 @@ function Privacidad() {
         </section>
         <section className="rounded-3xl border border-line p-5">
           <h2 className="font-medium">Borrar este teléfono</h2>
-          <p className="mt-2 text-sm text-stone">Quita la despensa, la compra abierta y las listas guardadas.</p>
+          <p className="mt-2 text-sm text-stone">
+            Quita la despensa, la compra abierta y las listas guardadas. Si las quieres conservar, guarda
+            antes un respaldo desde Hoy.
+          </p>
           {confirm ? (
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button variant="quiet" onClick={() => setConfirm(false)}>

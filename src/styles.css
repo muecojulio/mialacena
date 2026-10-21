@@ -83,8 +83,13 @@ html.dark {
   box-shadow: 0 16px 40px color-mix(in oklab, var(--color-ink) 14%, transparent);
 }
 
+/*
+ * `backwards`, no `both`: al terminar no debe quedarse con filter/transform aplicados, porque
+ * eso convierte a la vista en el ancla de los `position: fixed` y las hojas de confirmación
+ * (finalizar, cargar respaldo…) se iban al final del contenido en vez de abajo de la pantalla.
+ */
 .rise {
-  animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 
 @keyframes rise {

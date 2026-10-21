@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { Backup } from "./backup.ts";
+import { dayKey, isExpired } from "./dates.ts";
+import { plural } from "./money.ts";
+import { carriedPantryIds, clearRestocked, markRestocked, withoutRestock } from "./restock.ts";
 import { SEED } from "./seed.ts";
 import type { ListLine, PantryItem, ScanReport, ShopList, ViewId } from "./types.ts";
 
@@ -14,13 +18,14 @@ type PantryState = {
   lastScan: ScanReport | null;
   notice: Notice;
   oneHandedMode: boolean; // Modo de una sola mano con letras grandes
+  lastBackupAt: string | null; // Último respaldo en archivo (ISO)
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: ViewId) => void;
   setOneHandedMode: (enabled: boolean) => void;
   upsertItem: (item: PantryItem) => void;
   removeItem: (id: string) => void;
   removePreload: () => void;
-  rememberScan: (report: ScanReport) => void;
+  rememberScan: (report: ScanReport) => void; // Lectura nueva: borra las marcas de repuesto
   openList: (list: ShopList) => void;
   patchLine: (id: string, patch: Partial<ListLine>) => void;
   addLine: (line: Omit<ListLine, "id" | "inCart"> & { inCart?: boolean }) => void;
@@ -30,7 +35,7 @@ type PantryState = {
   applyTicketPrices: (ticketItems: { name: string; price: number; qty?: number }[]) => number; // Llena precios y guarda historial
   saveSnapshot: () => void;
   renameCurrent: (title: string) => void;
-  finishList: () => void;
+  finishList: () => void; // Lo marcado como llevado queda como repuesto hasta el próximo escaneo
   startNew: (source?: ShopList["source"]) => void;
   reuseSaved: (id: string) => void;
   deleteSaved: (id: string) => void;
@@ -38,6 +43,8 @@ type PantryState = {
   clearNotice: () => void;
   wipe: () => void;
   checkExpiredItems: () => void; // Checks expired items and sends to shop list
+  markBackedUp: (at: string) => void;
+  restoreBackup: (backup: Backup) => void; // Reemplaza todo con lo que trae el archivo
 };
 
 function nowIso(): string {
@@ -108,6 +115,7 @@ export const usePantry = create<PantryState>()(
       lastScan: null,
       notice: null,
       oneHandedMode: false,
+      lastBackupAt: null,
       setTheme: (theme) => set({ theme }),
       setView: (view) => set({ view }),
       setOneHandedMode: (oneHandedMode) => set({ oneHandedMode }),
@@ -130,7 +138,8 @@ export const usePantry = create<PantryState>()(
             notice: { id: Date.now(), text: "Precarga quitada de la despensa." },
           };
         }),
-      rememberScan: (report) => set({ lastScan: report }),
+      rememberScan: (report) =>
+        set((state) => ({ lastScan: report, items: clearRestocked(state.items) })),
       openList: (list) => set({ current: { ...list, updatedAt: nowIso() }, view: "lista" }),
       patchLine: (id, patch) =>
         set((state) => {
@@ -165,6 +174,12 @@ export const usePantry = create<PantryState>()(
         }),
       sendToShopList: (item) => {
         // "Se acabó": One tap sends to shopping list
+        if (item.restockedAt) {
+          // Ya no está en casa: deja de contar como repuesto.
+          set((state) => ({
+            items: state.items.map((row) => (row.id === item.id ? withoutRestock(row) : row)),
+          }));
+        }
         const state = get();
         const current = state.current ?? blankList("manual");
         // check if already in list
@@ -299,12 +314,21 @@ export const usePantry = create<PantryState>()(
           }
         }
 
+        // Al finalizar, ya está en casa: lo marcado como llevado cuenta como repuesto
+        // hasta el próximo escaneo.
+        const carried = carriedPantryIds(current, updatedItems);
+
         set({
           current: null,
-          items: updatedItems,
+          items: markRestocked(updatedItems, carried, done.finishedAt ?? nowIso()),
           saved: [done, ...state.saved.filter((row) => row.id !== done.id)].slice(0, 40),
           view: "guardadas",
-          notice: { id: Date.now(), text: "Compra finalizada. Precios pagados guardados." },
+          notice: {
+            id: Date.now(),
+            text: carried.length
+              ? `Compra finalizada. ${plural(carried.length, "producto ya está", "productos ya están")} en casa.`
+              : "Compra finalizada. Precios pagados guardados.",
+          },
         });
       },
       startNew: (source = "manual") =>
@@ -341,13 +365,17 @@ export const usePantry = create<PantryState>()(
           current: null,
           saved: [],
           lastScan: null,
+          lastBackupAt: null,
           view: "hoy",
           notice: { id: Date.now(), text: "Se borraron despensa y listas de este teléfono." },
         }),
       checkExpiredItems: () => {
         const state = get();
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const expired = state.items.filter((item) => item.expiresAt && item.expiresAt <= todayStr);
+        const today = dayKey();
+        // Lo repuesto llegó nuevo: no se vuelve a mandar a la lista por la fecha del empaque anterior.
+        const expired = state.items.filter(
+          (item) => item.expiresAt && isExpired(item.expiresAt, today) && !item.restockedAt,
+        );
         if (expired.length === 0) return;
 
         let addedCount = 0;
@@ -363,6 +391,27 @@ export const usePantry = create<PantryState>()(
           get().toast(`${addedCount} producto(s) vencido(s) pasaron a la lista de compra.`);
         }
       },
+      markBackedUp: (at) => set({ lastBackupAt: at }),
+      restoreBackup: (backup) =>
+        set((state) => {
+          const { data } = backup;
+          const lists = data.saved.length + (data.current ? 1 : 0);
+          return {
+            items: data.items,
+            current: data.current,
+            saved: data.saved.slice(0, 40),
+            lastScan: data.lastScan,
+            theme: data.theme ?? state.theme,
+            oneHandedMode: data.oneHandedMode ?? state.oneHandedMode,
+            // Lo que hay ahora en el teléfono es justo ese respaldo.
+            lastBackupAt: backup.exportedAt,
+            view: "hoy",
+            notice: {
+              id: Date.now(),
+              text: `Respaldo cargado: ${plural(data.items.length, "producto", "productos")} y ${plural(lists, "lista", "listas")}.`,
+            },
+          };
+        }),
     }),
     {
       name: "mialacena",
@@ -375,6 +424,7 @@ export const usePantry = create<PantryState>()(
         saved: state.saved,
         lastScan: state.lastScan,
         oneHandedMode: state.oneHandedMode,
+        lastBackupAt: state.lastBackupAt,
       }),
     },
   ),

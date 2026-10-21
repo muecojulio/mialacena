@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Camera, Check, Video, Star, Barcode } from "lucide-react";
+import { Camera, Check, Video, Star, Barcode, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui";
 import { fileToJpeg, framesFromVideo } from "@/lib/images";
 import { diffPantry, surprises } from "@/lib/match";
+import { plural } from "@/lib/money";
+import { isRestocked } from "@/lib/restock";
 import { scanPantry } from "@/lib/scan.functions";
 import { blankList, lineFromItem, usePantry } from "@/lib/store";
 import { UNITS, PACKAGE_TYPES, type PantryItem, type ScanHit, type Unit, type PackageType } from "@/lib/types";
@@ -23,9 +25,13 @@ export function Escanear() {
   const [busy, setBusy] = useState(false);
   const [gaps, setGaps] = useState<Gap[] | null>(null);
   const [extra, setExtra] = useState<ScanHit[]>([]);
-  const [seen, setSeen] = useState<Record<string, boolean>>({});
+  // Lo repuesto en la última compra ya está en casa: entra activado.
+  const [seen, setSeen] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(items.filter(isRestocked).map((item) => [item.id, true])),
+  );
   const [pending, setPending] = useState<PantryItem[] | null>(null);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  const restockedCount = items.filter(isRestocked).length;
 
   async function addImages(list: FileList | null) {
     if (!list?.length) return;
@@ -87,6 +93,7 @@ export function Escanear() {
         hits: result.items,
         present,
         missing: nextGaps.length - present,
+        missingIds: nextGaps.filter((gap) => gap.status !== "ok").map((gap) => gap.item.id),
       });
     } finally {
       setBusy(false);
@@ -122,6 +129,16 @@ export function Escanear() {
 
   function fromManual() {
     const missing = items.filter((item) => !seen[item.id]);
+    // Marcar a mano también es un escaneo: queda como última lectura y lo repuesto deja de contar aparte.
+    rememberScan({
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      note: "Revisión a mano: activaste lo que sí había.",
+      hits: [],
+      present: items.length - missing.length,
+      missing: missing.length,
+      missingIds: missing.map((item) => item.id),
+    });
     askOrOpen(missing);
   }
 
@@ -168,6 +185,16 @@ export function Escanear() {
           <Barcode className="size-5" />
         </Button>
       </div>
+
+      {restockedCount > 0 && (
+        <p className="flex items-start gap-2 rounded-2xl bg-sage/10 p-3 text-sm leading-relaxed">
+          <PackageCheck className="mt-0.5 size-4 shrink-0 text-sage" aria-hidden="true" />
+          <span>
+            {plural(restockedCount, "producto repuesto", "productos repuestos")} en tu última compra{" "}
+            {restockedCount === 1 ? "cuenta" : "cuentan"} como en casa hasta esta lectura.
+          </span>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl bg-clay text-clay-ink transition-transform duration-150 active:scale-[0.96]">
@@ -292,7 +319,11 @@ export function Escanear() {
 
       <section className="rounded-3xl bg-soft p-4">
         <p className="text-sm font-medium">O márcalo tú</p>
-        <p className="mt-1 text-sm text-stone">Activa lo que sí viste. Lo demás entra a la lista.</p>
+        <p className="mt-1 text-sm text-stone">
+          {restockedCount > 0
+            ? "Activa lo que sí viste. Lo repuesto en tu última compra ya viene activado. Lo demás entra a la lista."
+            : "Activa lo que sí viste. Lo demás entra a la lista."}
+        </p>
         <ul className="mt-3 flex max-h-80 flex-col gap-2 overflow-y-auto">
           {items.map((item) => {
             const on = Boolean(seen[item.id]);
@@ -305,10 +336,15 @@ export function Escanear() {
                   onClick={() => setSeen({ ...seen, [item.id]: !on })}
                   className="flex h-12 w-full items-center justify-between rounded-2xl bg-card px-3 text-left text-sm transition-colors duration-150"
                 >
-                  <span className="flex items-center gap-1.5">
-                    {item.isEssential && <Star className="size-3 fill-clay text-clay" />}
-                    <span>{item.name}</span>
-                    <span className="text-stone"> · {item.targetQty} {item.unit}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {item.isEssential && <Star className="size-3 shrink-0 fill-clay text-clay" />}
+                    <span className="truncate">{item.name}</span>
+                    <span className="shrink-0 text-stone"> · {item.targetQty} {item.unit}</span>
+                    {item.restockedAt && (
+                      <span className="shrink-0 rounded-md bg-sage/15 px-1.5 py-0.5 text-[10px] font-semibold text-sage">
+                        Repuesto
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`flex size-7 items-center justify-center rounded-full transition-transform duration-200 ${

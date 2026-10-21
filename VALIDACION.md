@@ -8,6 +8,9 @@ teléfono 430 × 900), más 10 pruebas de lógica sobre el cálculo de faltantes
 navegador y 10/10 de lógica).** Durante la revisión se reforzaron dos puntos débiles;
 el detalle está al final.
 
+La **sección 5** cubre las dos funciones que se agregaron después: el respaldo en archivo y
+«al finalizar, ya está en casa».
+
 ---
 
 ## 1. Requisito por requisito
@@ -81,3 +84,79 @@ las fotos no se almacenan.
 - Se agregó `allowedHosts: true` al servidor de desarrollo en `vite.config.ts` para que
   la vista previa funcione con el dominio público del entorno. Solo afecta al modo
   desarrollo.
+
+---
+
+## 5. Respaldo y «al finalizar, ya está en casa»
+
+Agregado y validado el **21 de octubre de 2026**: 57 de 57 comprobaciones en navegador
+(Chromium, pantalla de teléfono 390 × 844, zona horaria de la Ciudad de México) y 18 pruebas
+de lógica nuevas.
+
+| Lo que pediste | ¿Está? | Dónde vive | Cómo se comprobó |
+|---|---|---|---|
+| **Un botón guarda la despensa y las listas en un archivo** | Sí | `src/components/backup-card.tsx`, `src/lib/backup.ts`, `src/lib/save-file.ts` | Tarjeta «Respaldo» en Hoy. Se descargó `mialacena-respaldo-2026-10-21.json` y se revisó: 16 productos, lista abierta, lista guardada, última lectura y marcas de repuesto. Debajo queda «Último respaldo: 21 oct, 01:18 a.m.». En iPhone abre la hoja de compartir («Guardar en Archivos», AirDrop…); si se cancela, no cuenta como respaldo |
+| **Otro botón lo vuelve a cargar si cambias de aparato** | Sí | `src/components/backup-card.tsx`, `src/lib/store.ts` → `restoreBackup` | En un segundo teléfono (sin datos) se cargó ese archivo. Antes de reemplazar, muestra qué trae (16 productos · 1 guardada · 1 en la lista abierta) y qué se va a perder; con «Cancelar» no cambia nada. Al cargar, el segundo teléfono quedó **idéntico** al primero, campo por campo |
+| **Al terminar, lo que marcaste como llevado cuenta como repuesto** | Sí | `src/lib/restock.ts`, `src/lib/store.ts` → `finishList` | Se marcaron 5 de 12 como «Ya lo llevo» y se finalizó. El diálogo avisa «Ya en casa: 5 productos» antes de confirmar; al finalizar, la despensa marcó justo esos 5. Hoy pasó de «Vistos 4 · Faltan 12» a «Vistos 4 · **Repuestos 5** · Faltan 7» |
+| **…hasta el próximo escaneo** | Sí | `src/lib/store.ts` → `rememberScan`, `src/components/view-scan.tsx` | En Escanear, lo repuesto entra ya activado en «O márcalo tú» (con etiqueta «Repuesto»). Al armar la lista se borraron todas las marcas y Hoy volvió a dos recuadros. Una lectura con foto hace lo mismo |
+
+**Cómo funciona, en detalle**
+
+- **Qué cuenta como repuesto:** los renglones marcados como llevados que son de la despensa.
+  Los extras de la visita no cuentan, un producto repetido cuenta una vez y lo que ya no está
+  en la despensa se ignora. Si nada de la despensa se marcó, el diálogo lo dice y la despensa
+  queda igual.
+- **Dónde se ve:** en Hoy (recuadro «Repuestos» y la nota «Ya en casa: 5 productos de tu
+  compra del 21 oct…», aunque todavía no haya una lectura), en Despensa (insignia
+  «Repuesto · 21 oct») y en Escanear (aviso y casillas ya activadas).
+- **Qué la quita:** el próximo escaneo, con foto o a mano. Revisar a mano ahora sí queda como
+  última lectura, como pide «hasta el próximo escaneo»; antes no se registraba. «¡Se acabó!»
+  quita la marca de ese producto, porque ya no está en casa.
+- **Caducidades:** al reponer un producto vencido o por vencer se quita esa fecha (llegó un
+  empaque nuevo) y no se vuelve a mandar solo a la lista. Una fecha lejana se conserva.
+- **Qué guarda el respaldo:** la despensa (con marcas, precios, caducidades y repuestos), la
+  lista abierta, las guardadas, la última lectura, el tema y el modo una mano. No guarda la
+  pestaña abierta ni los avisos. Es un JSON legible con un encabezado
+  (`app`, `kind`, `version`, `exportedAt`) para reconocerlo y poder cambiar el formato
+  después sin romper respaldos viejos.
+- **Al cargar se valida:** un archivo que no es respaldo (otro JSON, una foto) o de una
+  versión más nueva se rechaza con un aviso claro y no toca nada. Si un registro viene dañado
+  se omite o se corrige (sin nombre se omite, unidad desconocida pasa a «pza», ids repetidos se
+  quedan una vez) en vez de tirar todo el respaldo. Tope de 5 MB.
+- Si alguien agrega un campo nuevo a un producto o a una lista y no lo suma al respaldo, el
+  typecheck falla. Así el respaldo no pierde datos en silencio.
+
+**Lo que se corrigió en el camino**
+
+1. **Las hojas de confirmación se abrían fuera de la pantalla.** La animación de entrada de
+   las vistas (`.rise`) se quedaba con `filter`/`transform` aplicados, y eso hace que los
+   elementos `position: fixed` se acomoden al contenido y no a la pantalla. En una lista
+   larga, al tocar «Finalizar» se oscurecía todo pero la hoja quedaba al fondo de la página,
+   detrás de la navegación. Pasaba con todas las hojas dentro de las vistas. Se corrigió en
+   `src/styles.css` (la animación se ve igual) y se comprobó que la hoja queda abajo de la
+   pantalla.
+2. **Las caducidades se comparaban con el día en UTC.** Desde las 6 p.m. en la Ciudad de
+   México la app ya creía que era mañana, así que lo que vencía al día siguiente se daba por
+   vencido y se mandaba a la lista un día antes. Ahora se usa el día local, igual que el campo
+   de fecha (`src/lib/dates.ts`). Se probó con el reloj fijo a las 8 p.m.: lo que vence hoy
+   pasa a la lista y lo que vence mañana se queda en «Vence pronto».
+
+**Cómo se validó**
+
+- **Navegador**, 57/57 comprobaciones sin errores de JavaScript:
+  - reponer de punta a punta: 18;
+  - respaldo entre dos teléfonos, con archivos equivocados, «Cancelar» y la hoja de compartir
+    de iPhone: 26;
+  - finalizar sin nada llevado, repuestos sin lectura previa, tema claro, pantalla de 320 px y
+    Privacidad: 6;
+  - datos guardados con la versión anterior y fechas locales: 7.
+- **Datos de antes:** un teléfono con datos de la versión anterior abre igual. No se cambió el
+  formato guardado, solo se agregaron campos opcionales, y las lecturas viejas se siguen
+  mostrando con sus mismos números.
+- **Lógica:** `src/lib/backup.test.ts` (8) cubre ida y vuelta sin perder campos, rechazos,
+  registros dañados, BOM y nombre del archivo. `src/lib/restock.test.ts` (10) cubre qué
+  cuenta como llevado, caducidades, el resumen de Hoy, lecturas viejas y el store completo
+  (finalizar, escanear, «¡Se acabó!», caducidades, cargar respaldo y borrar). Ambas se
+  agregaron a `npm test` y pasan también con la zona horaria en UTC+14 y UTC−11.
+- `tsc` limpio, `npm run build` completo y `eslint` sin avisos nuevos (queda uno menos que
+  antes). Las 16 fallas de las pruebas de la plantilla son las mismas que en el commit base.

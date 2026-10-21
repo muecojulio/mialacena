@@ -16,10 +16,12 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  PackageCheck,
 } from "lucide-react";
 import { Button, TextField } from "@/components/ui";
 import { downloadExcel } from "@/lib/excel";
-import { lineAmount, mxn, parseMoney, parseQty } from "@/lib/money";
+import { lineAmount, mxn, parseMoney, parseQty, plural } from "@/lib/money";
+import { carriedPantryIds } from "@/lib/restock";
 import { usePantry } from "@/lib/store";
 import type { ListLine } from "@/lib/types";
 import { shareViaWhatsApp } from "@/lib/whatsapp";
@@ -263,6 +265,8 @@ export function Lista() {
     .filter((line) => line.inCart)
     .reduce((sum, line) => sum + lineAmount(line.qty, line.unitPrice), 0);
   const taken = current.lines.filter((line) => line.inCart).length;
+  // Al finalizar, esto queda como repuesto en la despensa
+  const homeCount = carriedPantryIds(current, items).length;
 
   // Tope de gasto
   const budget = current.spendingBudget;
@@ -655,6 +659,19 @@ export function Lista() {
             <p className="mt-2 text-sm text-stone">
               Se guarda en este teléfono con total {mxn(total)}. Los precios pagados se guardarán para actualizar tus costos habituales.
             </p>
+            {homeCount > 0 ? (
+              <p className="mt-3 flex items-start gap-2 rounded-2xl bg-sage/10 p-3 text-sm leading-relaxed">
+                <PackageCheck className="mt-0.5 size-4 shrink-0 text-sage" aria-hidden="true" />
+                <span>
+                  <span className="font-medium">Ya en casa: {plural(homeCount, "producto", "productos")}.</span>{" "}
+                  Lo que marcaste como llevado cuenta como repuesto en tu despensa hasta el próximo escaneo.
+                </span>
+              </p>
+            ) : (
+              <p className="mt-3 rounded-2xl bg-soft p-3 text-sm leading-relaxed text-stone">
+                No marcaste como llevado nada de tu despensa, así que se queda igual.
+              </p>
+            )}
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Button variant="quiet" onClick={() => setConfirmFinish(false)}>
                 Seguir
