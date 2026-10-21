@@ -88,20 +88,25 @@ export function BackupCard() {
       : `Reemplaza lo que hay ahora en este teléfono (${plural(itemCount, "producto", "productos")} y ${plural(listCount, "lista", "listas")}). Si lo quieres conservar, guarda antes su respaldo.`;
 
   return (
-    <section className="rounded-3xl border border-line bg-card p-5">
-      <p className="text-sm font-medium">Respaldo</p>
+    <section className="card-pop card-grape p-5">
+      <p className="section-title text-sm">
+        <span className="icon-blob icon-grape size-8">
+          <FileDown className="size-4" />
+        </span>
+        Respaldo
+      </p>
       <p className="mt-1 text-sm leading-relaxed text-stone">
         Todo vive en este teléfono. Guarda tu despensa y tus listas en un archivo, y cárgalo si
         cambias de aparato.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <button type="button" className={`${tile} bg-soft text-ink`} onClick={() => void save()}>
+        <button type="button" className={`${tile} btn-chunky bg-sage text-sage-ink`} onClick={() => void save()}>
           <FileDown className="size-5" aria-hidden="true" />
           Guardar respaldo
         </button>
         <button
           type="button"
-          className={`${tile} border border-line text-ink`}
+          className={`${tile} btn-chunky bg-soft text-ink`}
           onClick={() => picker.current?.click()}
         >
           <FileUp className="size-5" aria-hidden="true" />

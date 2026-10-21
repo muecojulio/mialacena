@@ -63,7 +63,8 @@ function serveGrokPwa(middlewares, cwd) {
       );
       res.statusCode = 200;
       res.setHeader("content-type", "application/manifest+json; charset=utf-8");
-      res.setHeader("cache-control", "no-cache");
+      // Misma política que producción (scripts/http-headers.mjs).
+      res.setHeader("cache-control", "public, max-age=3600");
       res.setHeader("content-length", String(body.byteLength));
       res.end(body);
       return;

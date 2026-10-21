@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 
 type CatalogHit = { code: string; name: string; brand: string };
 type CatalogOk = { ok: true; products: CatalogHit[] };
@@ -16,6 +17,7 @@ function asQuery(input: { query: string }): { query: string } {
 }
 
 export const searchProducts = createServerFn({ method: "POST" })
+  .middleware([rateLimit("catalog", 24, 60_000)])
   .validator(asQuery)
   .handler(async ({ data }): Promise<CatalogOk | CatalogErr> => {
     const key = data.query.toLocaleLowerCase("es-MX");
@@ -34,6 +36,8 @@ export const searchProducts = createServerFn({ method: "POST" })
           Accept: "application/json",
           "User-Agent": "mialacena/1.0 (despensa personal)",
         },
+        // Corte duro: un upstream colgado no debe retener el proceso.
+        signal: AbortSignal.timeout(8000),
       });
     } catch {
       return { ok: false, error: "El catálogo público no respondió." };

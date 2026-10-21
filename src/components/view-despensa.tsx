@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { BarcodeModal } from "@/components/barcode-modal";
 import { FactsPanel } from "@/components/facts-panel";
+import { categoryStyle } from "@/lib/colors";
+import { CategoryChip } from "@/components/category-chip";
 import { Button, SelectField, TextField } from "@/components/ui";
 import { searchProducts } from "@/lib/catalog.functions";
 import { GRADE_COLORS, type OffProduct } from "@/lib/off";
@@ -288,7 +290,7 @@ export function Despensa() {
     <div className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl">Despensa</h1>
+          <h1 className="font-display text-3xl font-bold">🧺 Despensa</h1>
           <p className="mt-1 text-sm text-stone">
             Fotos locales, compra vs. consumo, existencias y caducidades.
           </p>
@@ -330,7 +332,7 @@ export function Despensa() {
               onClick={() => setDespensaTab(t.id)}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition-colors",
-                active ? "bg-card text-ink shadow-xs" : "text-stone hover:text-ink",
+                active ? "bg-clay text-clay-ink shadow-sm" : "text-stone hover:text-ink",
               )}
             >
               <div className="flex items-center gap-1">
@@ -367,22 +369,31 @@ export function Despensa() {
           />
 
           <div className="flex flex-wrap gap-2">
-            {["Todas", ...CATEGORIES].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategory(item)}
-                className={`h-10 rounded-full px-3 text-sm transition-colors duration-150 ${
-                  category === item ? "bg-ink text-paper" : "bg-soft text-ink"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
+            {["Todas", ...CATEGORIES].map((item) => {
+              const style = item === "Todas" ? null : categoryStyle(item);
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setCategory(item)}
+                  className={cn(
+                    "h-10 rounded-full border-[1.5px] px-3.5 text-sm font-semibold transition-all duration-150 active:scale-[0.96]",
+                    category === item
+                      ? cn(
+                          "border-transparent shadow-md",
+                          style ? cn(style.bg, style.text) : "bg-ink text-paper",
+                        )
+                      : "border-line bg-soft text-ink",
+                  )}
+                >
+                  {item}
+                </button>
+              );
+            })}
           </div>
 
           {shown.length === 0 && (
-            <p className="rounded-3xl bg-card p-5 text-sm text-stone">
+            <p className="card-pop p-5 text-sm text-stone">
               Nada en esta vista. Agrega lo que tu alacena debe tener.
             </p>
           )}
@@ -391,7 +402,7 @@ export function Despensa() {
             {shown.map((item) => {
               const unitInfo = describePurchaseVsConsumption(item);
               return (
-                <li key={item.id} className="relative rounded-3xl border border-line bg-card p-4">
+                <li key={item.id} className="relative card-pop p-4">
                   <div className="flex items-start justify-between gap-3">
                     {/* Miniatura de foto guardada localmente o botón rápido para agregarla */}
                     <div className="relative shrink-0">
@@ -456,7 +467,8 @@ export function Despensa() {
                         )}
                       </div>
                       <p className="mt-0.5 text-sm text-stone">
-                        {item.brand || "Sin marca"} · {item.category}
+                        {item.brand || "Sin marca"} ·{" "}
+                      <CategoryChip category={item.category} />
                       </p>
 
                       {/* Unidades de compra vs. consumo claras */}
@@ -560,7 +572,7 @@ export function Despensa() {
           </ul>
 
           {preloadCount > 0 && (
-            <div className="rounded-3xl border border-line bg-card p-4">
+            <div className="card-pop p-4">
               {confirmPreload ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-stone">
@@ -607,7 +619,7 @@ export function Despensa() {
          ===================================================================== */}
       {despensaTab === "comparar" && (
         <div className="flex flex-col gap-4">
-          <section className="rounded-3xl border border-line bg-card p-4">
+          <section className="card-pop p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl">Qué tengo ahora vs. qué debería tener</h2>
@@ -677,7 +689,7 @@ export function Despensa() {
           </div>
 
           {filteredComparisonRows.length === 0 ? (
-            <p className="rounded-3xl bg-card p-5 text-sm text-stone">
+            <p className="card-pop p-5 text-sm text-stone">
               No hay productos en este filtro.
             </p>
           ) : (
@@ -721,7 +733,8 @@ export function Despensa() {
                             )}
                           </div>
                           <p className="text-xs text-stone">
-                            {item.brand || "Sin marca"} · {item.category}
+                            {item.brand || "Sin marca"} ·{" "}
+                      <CategoryChip category={item.category} />
                           </p>
                           {equivalence && (
                             <p className="mt-1 text-xs font-medium text-clay">{equivalence}</p>
@@ -890,7 +903,7 @@ export function Despensa() {
           </section>
 
           {expiringRows.length === 0 ? (
-            <div className="rounded-3xl border border-line bg-card p-5 text-center">
+            <div className="card-pop p-5 text-center">
               <p className="font-medium text-sage">
                 ¡Ningún producto vence en los próximos {expiryWindowDays} días!
               </p>
@@ -924,7 +937,8 @@ export function Despensa() {
                         <div className="min-w-0">
                           <p className="font-medium">{item.name}</p>
                           <p className="text-xs text-stone">
-                            {item.brand || "Sin marca"} · {item.category}
+                            {item.brand || "Sin marca"} ·{" "}
+                      <CategoryChip category={item.category} />
                           </p>
                           <p className="mt-1 text-xs text-stone">
                             Fecha: <span className="font-medium text-ink">{expiresAt}</span>

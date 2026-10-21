@@ -1,7 +1,7 @@
 import { addDays, dayKey, daysBetween, EXPIRY_SOON_DAYS, shortCalendarDay } from "./dates.ts";
 import type { PantryItem, ScanReport } from "./types.ts";
 
-export function normalizeUnitFamily(u?: string): string {
+function normalizeUnitFamily(u?: string): string {
   if (!u) return "pieza";
   const clean = u.trim().toLowerCase();
   if (clean === "pza" || clean === "pieza" || clean === "piezas") return "pieza";
@@ -13,7 +13,7 @@ export function normalizeUnitFamily(u?: string): string {
   return u.trim();
 }
 
-export function formatUnitWord(rawUnit: string | undefined, count: number): string {
+function formatUnitWord(rawUnit: string | undefined, count: number): string {
   const u = (rawUnit || "piezas").trim();
   const low = u.toLowerCase();
   const singular = count === 1;

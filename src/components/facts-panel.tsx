@@ -99,7 +99,7 @@ export function FactsPanel({
         <a
           href={offWebUrl(barcode)}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] font-medium text-stone underline-offset-2 hover:underline"
         >
           Ver o corregir

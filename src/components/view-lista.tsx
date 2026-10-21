@@ -15,6 +15,7 @@ import {
   DollarSign,
   PackageCheck,
 } from "lucide-react";
+import { CategoryChip } from "@/components/category-chip";
 import { Button, TextField } from "@/components/ui";
 import { categoryTotals, downloadExcel, SUPERMARKET_AISLE_ORDER } from "@/lib/excel";
 import { lineAmount, mxn, parseMoney, parseQty, plural } from "@/lib/money";
@@ -284,7 +285,7 @@ export function Lista() {
   if (!current) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display text-3xl">Lista</h1>
+        <h1 className="font-display text-3xl font-bold">🛒 Lista</h1>
         <p className="text-sm leading-relaxed text-stone">
           Aquí marcas lo que ya llevas, la cantidad y el precio. El total se calcula solo.
         </p>
@@ -371,7 +372,7 @@ export function Lista() {
   return (
     <div className="flex flex-col gap-4">
       {/* Sticky Header with Totals and Budget */}
-      <div className="sticky top-16 z-10 -mx-5 bg-paper px-5 pb-3">
+      <div className="sticky top-16 z-10 -mx-4 bg-paper/95 px-4 pb-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Pencil className="size-3.5 shrink-0 text-stone" aria-hidden="true" />
@@ -405,7 +406,7 @@ export function Lista() {
         {/* Total and Budget Banner */}
         <div className="mt-2 flex items-baseline justify-between">
           <div>
-            <p className="font-display text-4xl">{mxn(total)}</p>
+            <p className="font-display text-4xl font-bold text-clay">{mxn(total)}</p>
             <p className="mt-1 text-sm text-stone">
               En el carrito {mxn(carried)} · {taken} de {current.lines.length}
             </p>
@@ -526,7 +527,7 @@ export function Lista() {
 
       {/* Total por categoría en la lista */}
       {catSubtotals.length > 0 && !oneHandedMode && (
-        <section className="rounded-3xl border border-line bg-card p-4">
+        <section className="card-pop p-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold tracking-wide text-stone uppercase">
               Total por categoría
@@ -562,12 +563,16 @@ export function Lista() {
             const sub = catSubtotalByName.get(category);
             return (
               <div key={category} className="flex flex-col gap-2">
-                <div className="flex items-center justify-between border-b border-line pb-1.5">
-                  <h3 className="font-display text-lg font-medium">{category}</h3>
+                <div className="flex items-center justify-between gap-2 border-b-[2px] border-line pb-1.5">
+                  <h3 className="font-display text-lg font-bold">
+                    <CategoryChip category={category} className="!text-sm" />
+                  </h3>
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-stone">{lines.length} art.</span>
+                    <span className="rounded-full bg-soft px-2 py-0.5 font-semibold text-stone">
+                      {lines.length} art.
+                    </span>
                     {sub && (
-                      <span className="rounded-lg bg-soft px-2 py-0.5 font-semibold text-ink">
+                      <span className="rounded-full bg-ink px-2 py-0.5 font-bold text-paper">
                         {mxn(sub.total)}
                       </span>
                     )}

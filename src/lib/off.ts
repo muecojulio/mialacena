@@ -11,7 +11,7 @@ import type { PublicFacts } from "./types.ts";
  */
 
 /** Campos mínimos para no descargar la ficha completa (puede pesar cientos de KB). */
-export const OFF_FIELDS = [
+const OFF_FIELDS = [
   "product_name",
   "product_name_es",
   "brands",
@@ -202,7 +202,3 @@ export const GRADE_COLORS: Record<string, string> = {
   e: "#e63e11",
 };
 
-export function gradeLabel(kind: "nutriscore" | "ecoscore", grade?: string): string | null {
-  if (!grade || !GRADE_COLORS[grade]) return null;
-  return `${kind === "nutriscore" ? "Nutri-Score" : "Eco-Score"} ${grade.toUpperCase()}`;
-}

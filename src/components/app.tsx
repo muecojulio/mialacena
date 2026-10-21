@@ -23,9 +23,14 @@ export function App() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-ink">
-        <Mark className="size-12 text-ink" />
-        <p className="font-display text-3xl">mialacena</p>
+      <main className="confetti flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-ink">
+        <span className="wiggle flex size-20 items-center justify-center rounded-[1.6rem] border-[1.5px] border-line bg-card shadow-lg">
+          <Mark className="size-14 text-ink" />
+        </span>
+        <p className="font-display text-4xl font-bold">mialacena</p>
+        <p className="rounded-full bg-soft px-4 py-1.5 text-sm font-medium text-stone">
+          Abriendo la despensa… 🧺
+        </p>
       </main>
     );
   }

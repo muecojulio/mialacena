@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 import { offProductUrl, parseOffProduct, type OffProduct } from "./off.ts";
 import { cleanBarcode, fetchJson, ttlCache } from "./public-fetch.ts";
 
@@ -13,6 +14,7 @@ const cache = ttlCache<OffProduct>(6 * 60 * 60 * 1000);
  * ingredientes, nutrimentos y foto. Sin llave; solo viaja el código.
  */
 export const getProductFacts = createServerFn({ method: "POST" })
+  .middleware([rateLimit("facts", 30, 60_000)])
   .validator((input: { barcode: string }): { barcode: string } => ({
     barcode: cleanBarcode(input?.barcode),
   }))

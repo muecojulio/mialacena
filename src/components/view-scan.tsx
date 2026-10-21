@@ -171,7 +171,7 @@ export function Escanear() {
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl">Escanear</h1>
+          <h1 className="font-display text-3xl font-bold">📸 Escanear</h1>
           <p className="mt-1 text-sm leading-relaxed text-stone">
             Fotos o video de tu alacena. Los productos imprescindibles irán primero en tu lista.
           </p>
@@ -249,7 +249,7 @@ export function Escanear() {
       </Button>
 
       {gaps && (
-        <section className="rounded-3xl border border-line bg-card p-4">
+        <section className="card-pop p-4">
           <p className="text-sm font-medium">Comparado con tu despensa</p>
           <p className="mt-0.5 text-xs text-stone">
             Los imprescindibles se acomodarán arriba en tu lista.

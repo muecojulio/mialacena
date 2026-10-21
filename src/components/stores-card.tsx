@@ -28,7 +28,7 @@ export function StoresCard() {
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-card p-4" aria-label="Tiendas cercanas">
+    <section className="card-pop p-4" aria-label="Tiendas cercanas">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-1.5 text-sm font-medium">
@@ -64,7 +64,7 @@ export function StoresCard() {
                 <a
                   href={store.mapUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   aria-label={`Ver ${store.name} en el mapa`}
                   className="inline-flex size-9 items-center justify-center rounded-xl bg-card text-stone transition-transform active:scale-[0.96]"
                 >
@@ -73,7 +73,7 @@ export function StoresCard() {
                 <a
                   href={store.directionsUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex h-9 items-center gap-1 rounded-xl bg-clay px-2.5 text-xs font-semibold text-clay-ink transition-transform active:scale-[0.96]"
                 >
                   <Navigation className="size-3.5" />

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 import { openPricesUrl, summarizePublicPrices, type PublicPriceSummary } from "./open-prices.ts";
 import { cleanBarcode, fetchJson, ttlCache } from "./public-fetch.ts";
 
@@ -13,6 +14,7 @@ const cache = ttlCache<PublicPriceSummary>(60 * 60 * 1000);
  * de tu súper: la app lo muestra etiquetado y no lo copia a tu despensa.
  */
 export const getPublicPrices = createServerFn({ method: "POST" })
+  .middleware([rateLimit("prices", 30, 60_000)])
   .validator((input: { barcode: string }): { barcode: string } => ({
     barcode: cleanBarcode(input?.barcode),
   }))

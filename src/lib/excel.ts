@@ -232,7 +232,7 @@ export function sheetXml(list: ShopList): string {
 </worksheet>`;
 }
 
-export const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="2">
 <numFmt numFmtId="164" formatCode="$#,##0.00"/>
@@ -317,7 +317,7 @@ export function workbookParts(list: ShopList): { name: string; data: string }[] 
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-export function xlsxBlob(list: ShopList): Blob {
+function xlsxBlob(list: ShopList): Blob {
   return zipStore(workbookParts(list), XLSX_MIME);
 }
 
