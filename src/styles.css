@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@import "@fontsource/outfit/400.css";
+@import "@fontsource/outfit/500.css";
+@import "@fontsource/outfit/600.css";
+@import "@fontsource/fraunces/600.css";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --color-paper: #f3efe6;
+  --color-ink: #1c1915;
+  --color-clay: #c4622d;
+  --color-clay-ink: #fff8f3;
+  --color-sage: #3f6b4e;
+  --color-sage-ink: #f4f7f2;
+  --color-stone: #6f695f;
+  --color-line: #e4dccf;
+  --color-card: #fffdf8;
+  --color-soft: #ebe4d6;
+  --radius-card: 1.25rem;
+}
+
+.dark {
+  --color-paper: #12110f;
+  --color-ink: #f4efe6;
+  --color-clay: #e08a4f;
+  --color-clay-ink: #1c120c;
+  --color-sage: #8eae84;
+  --color-sage-ink: #121810;
+  --color-stone: #a39c91;
+  --color-line: #34302a;
+  --color-card: #1c1a16;
+  --color-soft: #26231e;
+  color-scheme: dark;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--color-clay);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+.safe-top {
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.lift {
+  box-shadow: 0 16px 40px color-mix(in oklab, var(--color-ink) 14%, transparent);
+}
+
+.rise {
+  animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
