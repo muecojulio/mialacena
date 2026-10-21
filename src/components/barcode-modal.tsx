@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Barcode, Camera, X, Check, Loader2 } from "lucide-react";
-import { Button, TextField } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { lookupBarcode } from "@/lib/barcode.functions";
 import { detectBarcodeFromImage } from "@/lib/barcode-detector";
 import { fileToJpeg } from "@/lib/images";

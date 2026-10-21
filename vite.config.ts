@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
-import { defineConfig } from "vite";
+import { createLogger, defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -142,10 +142,27 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+/**
+ * Filter the 20 `MODULE_LEVEL_DIRECTIVE` warnings Rolldown emits for
+ * @tanstack/react-router's `"use client"` directives. They are inert in this
+ * app (no React Server Components), so the build log stays readable; any other
+ * warning still reaches the terminal.
+ */
+function quietThirdPartyDirectiveWarnings() {
+  const logger = createLogger();
+  const warn = logger.warn.bind(logger);
+  logger.warn = (msg, options) => {
+    if (msg.includes("[MODULE_LEVEL_DIRECTIVE]") && msg.includes("node_modules/")) return;
+    warn(msg, options);
+  };
+  return logger;
+}
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
+  customLogger: quietThirdPartyDirectiveWarnings(),
   server: {
     host: "0.0.0.0",
     port: 8080,

@@ -151,14 +151,24 @@ export function stripInstallParams(url) {
   return rest ? `${path}?${rest}` : path;
 }
 
-export function renderInstallPageHtml(template, { host, url } = {}) {
+/**
+ * The display name for platform chrome: the app's own `site.json` title when it
+ * has one, else the published host slug, else the platform default. Without
+ * this the PWA installed from a preview / custom host is called "Grok App"
+ * even though the page title and share card carry the real app name.
+ */
+export function resolvePwaAppName(hostHeader, site = {}) {
+  return String(site?.title ?? "").trim() || appNameFromHost(hostHeader);
+}
+
+export function renderInstallPageHtml(template, { host, url, site } = {}) {
   return String(template)
-    .replaceAll("{{APP_NAME}}", escapeHtml(appNameFromHost(host)))
+    .replaceAll("{{APP_NAME}}", escapeHtml(resolvePwaAppName(host, site)))
     .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)));
 }
 
-export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
+export function renderWebManifest(hostHeader, site = {}) {
+  const name = resolvePwaAppName(hostHeader, site);
   return JSON.stringify(
     {
       name,

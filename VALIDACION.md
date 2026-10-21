@@ -160,3 +160,91 @@ de lógica nuevas.
   agregaron a `npm test` y pasan también con la zona horaria en UTC+14 y UTC−11.
 - `tsc` limpio, `npm run build` completo y `eslint` sin avisos nuevos (queda uno menos que
   antes). Las 16 fallas de las pruebas de la plantilla son las mismas que en el commit base.
+
+---
+
+## 6. Corrección de errores y avisos (revisión del 21 de octubre de 2026)
+
+Pasada de calidad sobre el código y las herramientas, sin cambiar el formato de los datos
+guardados ni el comportamiento visible, salvo el nombre de la app instalada, que ahora sí es
+el suyo.
+
+| Comprobación | Antes | Después |
+|---|---|---|
+| `npm run lint` | 1 error y 5 avisos | 0 problemas |
+| `npm run typecheck` | limpio | limpio |
+| `npm test` | 16 fallas (181 de 197) | 0 fallas (193 de 198, 5 omitidas a propósito; 107 de 107 de la app) |
+| `npm run build` | 20 avisos de Rolldown | 0 avisos, 0 errores |
+| `npm install` | 2 avisos `EBADENGINE` | 1 (solo de una dependencia) |
+| Manifest y tutorial de instalación | «Grok App» | «mialacena» |
+| Servidor de desarrollo | — | `/`, `/privacidad`, favicon, og.jpg, manifest y `/__app-env` responden 200 |
+| Datos guardados de la versión anterior | error de consola de zustand al migrar | carga sin error |
+
+### Lo que se corrigió
+
+1. **Un error de ESLint y cinco importaciones muertas.** Sobraban `TextField` en
+   `barcode-modal.tsx`, `Check`, `Upload` y `mxn` en `ticket-modal.tsx`, y `PACKAGE_TYPES`
+   en `view-scan.tsx`. El `catch {}` vacío de `app-data/client.server.ts` ahora explica por
+   qué ignora un JWT ilegible (se cae al hash del token completo).
+
+2. **Las 16 fallas de `npm test` no eran fallas de la app.** Tenían tres causas, todas de
+   pruebas de la plantilla que daban por hecho el entorno del sandbox:
+   - **Cuatro** pruebas leían documentos que viven en `.grok/`, una carpeta que está en
+     `.gitignore` y no viene en el repositorio. Ahora se omiten con un motivo claro cuando
+     no existe; si el sandbox trae la carpeta, se siguen ejecutando.
+   - **Ocho** pruebas de la cabecera PWA suponían un proyecto sin tarjeta propia
+     (`public/og.jpg`) ni `src/lib/og/site.json`, así que el título y la tarjeta reales de
+     mialacena ganaban y rompían sus expectativas. Ahora fijan el directorio de trabajo a
+     una carpeta vacía y siguen comprobando la mecánica de la plataforma.
+   - **Cuatro** esperaban `VITE_AUTH_ENABLED=false`, que solo existe en
+     `.grok/app-env.json` (ausente por la misma razón). Ahora comprueban el valor que el
+     wrapper resuelve de verdad: sin archivo, «sign-in on», que es el comportamiento
+     documentado.
+
+3. **El nombre de la app instalada.** El manifest y el tutorial de instalación usaban solo
+   el slug del host, así que en la vista previa, en un dominio propio o en Vercel la app se
+   instalaba como «Grok App». Ahora usan el `title` de `src/lib/og/site.json` y, si no hay,
+   el slug del host como antes. Comprobado en el servidor: `name` y `short_name` son
+   `mialacena`, y el tutorial dice «Add mialacena to your Home Screen».
+
+4. **Node.** `engines` pedía `24.x` mientras el contenedor, `AGENTS.md` y el runtime de Nitro
+   usan Node 22. Ahora pide `>=22.22.0` (sigue aceptando 24) y la instalación deja de avisar
+   por el proyecto.
+
+5. **Los 20 avisos del build** (`MODULE_LEVEL_DIRECTIVE`) venían de los `"use client"` de
+   `@tanstack/react-router`, no del código de la app: en un bundle sin React Server
+   Components son inertes. Se filtran en el logger de Vite solo cuando la ruta está en
+   `node_modules/`; cualquier otro aviso sigue saliendo. `npm run build` queda limpio.
+
+6. **Datos guardados de la versión anterior.** El store está en `version: 2` y no tenía
+   `migrate`, así que zustand abría un teléfono con datos de la versión 1 registrando
+   «State loaded from storage couldn't be migrated». Ahora devuelve lo guardado y los campos
+   nuevos toman su valor por defecto; el formato del respaldo y de `localStorage` no cambia.
+
+### Avisos que no se corrigen desde este repositorio
+
+- **`@zxing/library` pide Node ≥ 24** en su `engines`, aunque se usa solo en el navegador
+  (lector de códigos). npm avisa al instalar; no afecta a la app ni al build. Evitarlo
+  obligaría a bajar de versión la librería.
+- **`npm` marca como deprecadas `recharts@2` y `eslint@9`.** Son dependencias de la
+  plantilla que esta app no usa (`recharts`, los Radix y otras no se importan en `src/`).
+  Actualizarlas exige saltos mayores que no aportan nada aquí.
+- **`npm run check:auth` informa «sign-in on»** porque `.grok/app-env.json` no está en el
+  repositorio. La app no muestra ninguna pantalla de acceso, así que no cambia nada
+  visible; el chequeo sirve para comprobar que dev y build coinciden, y coinciden.
+
+### Cómo se comprobó
+
+- `npm run lint`, `npm run typecheck`, `npm test` y `npm run build`, todos en verde con los
+  números de la tabla.
+- `node scripts/brand-check.mjs --root .` → `ok: true`, 0 avisos (tarjeta de 1200 × 630,
+  35 KB).
+- Servidor real (`npm run dev`): las rutas de la tabla responden 200 y el HTML servido lleva
+  `og:title`, `og:description`, `twitter:card` y el manifest con el nombre correcto.
+- Build de producción servido con `npm run preview`: `/`, `/privacidad`, el manifest y el
+  tutorial de instalación responden 200; el manifest y el tutorial ya dicen «mialacena» y
+  la cabecera sale del middleware de Nitro, no solo del servidor de desarrollo.
+- **Sin navegador en esta pasada:** Playwright no pudo descargar Chromium en este entorno
+  (`Download failure`), así que no se repitió la navegación de punta a punta de las
+  secciones 4 y 5. Lo anterior sigue vigente; lo nuevo se validó con pruebas, build y
+  peticiones HTTP reales.
