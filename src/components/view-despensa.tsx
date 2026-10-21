@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button, SelectField, TextField } from "@/components/ui";
 import { searchProducts } from "@/lib/catalog.functions";
 import { mxn } from "@/lib/money";
+import { SEED } from "@/lib/seed";
 import { usePantry } from "@/lib/store";
 import { CATEGORIES, UNITS, type PantryItem, type Unit } from "@/lib/types";
 
@@ -20,10 +21,12 @@ export function Despensa() {
   const items = usePantry((state) => state.items);
   const upsertItem = usePantry((state) => state.upsertItem);
   const removeItem = usePantry((state) => state.removeItem);
+  const removePreload = usePantry((state) => state.removePreload);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todas");
   const [draft, setDraft] = useState<PantryItem | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [confirmPreload, setConfirmPreload] = useState(false);
   const [hints, setHints] = useState<{ code: string; name: string; brand: string }[]>([]);
   const [hintNote, setHintNote] = useState("");
 
@@ -52,6 +55,9 @@ export function Despensa() {
       window.clearTimeout(timer);
     };
   }, [name, draft]);
+
+  const preloadIds = new Set(SEED.map((row) => row.id));
+  const preloadCount = items.filter((item) => preloadIds.has(item.id)).length;
 
   const shown = items.filter((item) => {
     const blob = `${item.name} ${item.brand}`.toLocaleLowerCase("es-MX");
@@ -159,6 +165,42 @@ export function Despensa() {
           </li>
         ))}
       </ul>
+
+      {preloadCount > 0 && (
+        <div className="rounded-3xl border border-line bg-card p-4">
+          {confirmPreload ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-stone">
+                Se quitarán {preloadCount} productos precargados. Tus productos propios se quedan.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="quiet" className="flex-1" onClick={() => setConfirmPreload(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={() => {
+                    removePreload();
+                    setConfirmPreload(false);
+                  }}
+                >
+                  Quitar precarga
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 text-sm text-stone"
+              onClick={() => setConfirmPreload(true)}
+            >
+              <Trash2 className="size-4" />
+              Quitar precarga ({preloadCount})
+            </button>
+          )}
+        </div>
+      )}
 
       {draft && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40">

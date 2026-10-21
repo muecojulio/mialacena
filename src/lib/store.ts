@@ -17,6 +17,7 @@ type PantryState = {
   setView: (view: ViewId) => void;
   upsertItem: (item: PantryItem) => void;
   removeItem: (id: string) => void;
+  removePreload: () => void;
   rememberScan: (report: ScanReport) => void;
   openList: (list: ShopList) => void;
   patchLine: (id: string, patch: Partial<ListLine>) => void;
@@ -85,6 +86,15 @@ export const usePantry = create<PantryState>()(
           };
         }),
       removeItem: (id) => set((state) => ({ items: state.items.filter((row) => row.id !== id) })),
+      removePreload: () =>
+        set((state) => {
+          const preloadIds = new Set(SEED.map((row) => row.id));
+          const items = state.items.filter((row) => !preloadIds.has(row.id));
+          return {
+            items,
+            notice: { id: Date.now(), text: "Precarga quitada de la despensa." },
+          };
+        }),
       rememberScan: (report) => set({ lastScan: report }),
       openList: (list) => set({ current: { ...list, updatedAt: nowIso() }, view: "lista" }),
       patchLine: (id, patch) =>
