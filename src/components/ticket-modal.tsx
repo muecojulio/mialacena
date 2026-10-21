@@ -4,6 +4,7 @@ import { Button } from "@/components/ui";
 import { fileToJpeg } from "@/lib/images";
 import { scanTicketImage } from "@/lib/ticket.functions";
 import { parseTicketText, type TicketItem } from "@/lib/ticket-parser";
+import { recognizeTicketText } from "@/lib/ticket-ocr";
 import { mxn } from "@/lib/money";
 
 export type TicketModalProps = {
@@ -18,6 +19,7 @@ export function TicketModal({ isOpen, onClose, onApply }: TicketModalProps) {
   const [scannedItems, setScannedItems] = useState<TicketItem[]>([]);
   const [rawText, setRawText] = useState("");
   const [mode, setMode] = useState<"photo" | "manual">("photo");
+  const [ocrPct, setOcrPct] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -26,17 +28,35 @@ export function TicketModal({ isOpen, onClose, onApply }: TicketModalProps) {
     if (!file) return;
     setLoading(true);
     setError(null);
+    setOcrPct(null);
     try {
       const dataUrl = await fileToJpeg(file);
-      // Call server fn
+      // Primero, lectura por IA en el servidor (si está configurada)...
       const result = await scanTicketImage({ data: { image: dataUrl } });
       if (result.ok && result.items.length > 0) {
         setScannedItems(result.items);
-      } else {
+        return;
+      }
+      // ...y si no, OCR local con Tesseract.js: sin llave y sin subir la foto a ningún lado.
+      try {
+        setOcrPct(0);
+        const text = await recognizeTicketText(dataUrl, setOcrPct);
+        const parsed = parseTicketText(text);
+        if (parsed.items.length > 0) {
+          setScannedItems(parsed.items);
+          return;
+        }
+        setRawText(text);
         setError(
-          result.ok
+          "El OCR de tu teléfono leyó el ticket pero no distinguió precios claros. Revisa el texto leído y ajústalo aquí.",
+        );
+        setMode("manual");
+      } catch {
+        setError(
+          (result.ok
             ? "No se pudieron distinguir precios en el ticket."
-            : result.error + " Puedes pegar el texto del ticket abajo."
+            : result.error + " Tampoco se pudo leer con el OCR del teléfono.") +
+            " Puedes pegar el texto del ticket abajo.",
         );
         setMode("manual");
       }
@@ -45,6 +65,7 @@ export function TicketModal({ isOpen, onClose, onApply }: TicketModalProps) {
       setMode("manual");
     } finally {
       setLoading(false);
+      setOcrPct(null);
     }
   }
 
@@ -95,6 +116,9 @@ export function TicketModal({ isOpen, onClose, onApply }: TicketModalProps) {
 
         <p className="mb-4 text-xs leading-relaxed text-stone">
           Toma una foto de tu ticket del súper. Se llenarán los precios reales que pagaste y la próxima lista arrancará con esos precios.
+          Si la lectura por IA no está disponible, el ticket se lee aquí mismo en tu teléfono con
+          Tesseract.js (OCR abierto, sin llave): la foto no sale del dispositivo y la primera vez puede
+          tardar porque descarga el idioma español.
         </p>
 
         {error && (
@@ -130,7 +154,14 @@ export function TicketModal({ isOpen, onClose, onApply }: TicketModalProps) {
               <div className="flex flex-col gap-3">
                 <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-soft/50 text-stone transition-colors active:scale-[0.98]">
                   {loading ? (
-                    <Loader2 className="size-8 animate-spin text-clay" />
+                    <>
+                      <Loader2 className="size-8 animate-spin text-clay" />
+                      {ocrPct !== null && (
+                        <span className="text-xs text-stone">
+                          Leyendo el ticket en tu teléfono… {ocrPct}%
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <>
                       <Camera className="size-8 text-clay" />

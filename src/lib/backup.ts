@@ -8,6 +8,7 @@ import {
   UNITS,
   type ListLine,
   type PantryItem,
+  type PublicFacts,
   type ScanHit,
   type ScanReport,
   type ShopList,
@@ -152,6 +153,42 @@ function uniqueById<T extends { id: string }>(rows: T[]): T[] {
   });
 }
 
+type PublicNutriments = NonNullable<PublicFacts["nutriments"]>;
+
+const nutrimentsShape: Shape<PublicNutriments> = {
+  kcal: nonNegative,
+  sugars: nonNegative,
+  salt: nonNegative,
+  fat: nonNegative,
+  proteins: nonNegative,
+};
+
+const grade: Reader<string> = (value) =>
+  typeof value === "string" && /^[a-e]$/i.test(value.trim())
+    ? value.trim().toLowerCase()
+    : undefined;
+
+const factsShape: Shape<PublicFacts> = {
+  source: oneOf(["openfoodfacts"] as const),
+  code: filled,
+  imageUrl: filled,
+  nutriscore: grade,
+  ecoscore: grade,
+  nova: positive,
+  allergens: (value) =>
+    Array.isArray(value)
+      ? value.filter((row): row is string => typeof row === "string" && row.trim().length > 0)
+      : undefined,
+  ingredients: filled,
+  quantityLabel: filled,
+  nutriments: (value) => readShape(value, nutrimentsShape, []) ?? undefined,
+  fetchedAt: instant,
+};
+
+/** La ficha pública es opcional: si viene dañada se descarta sola, sin tirar el producto. */
+const readFacts: Reader<PublicFacts> = (value) =>
+  readShape(value, factsShape, ["source", "code", "fetchedAt"]) ?? undefined;
+
 const itemShape: Shape<PantryItem> = {
   id: filled,
   name: filled,
@@ -171,6 +208,7 @@ const itemShape: Shape<PantryItem> = {
   expiresAt: calendarDay,
   photo: filled,
   restockedAt: instant,
+  facts: readFacts,
 };
 
 const lineShape: Shape<ListLine> = {

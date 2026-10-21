@@ -14,6 +14,8 @@ import {
   Star,
 } from "lucide-react";
 import { BackupCard } from "@/components/backup-card";
+import { HolidayNote } from "@/components/holiday-note";
+import { RecipesCard } from "@/components/recipes-card";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { dayKey, shortDay } from "@/lib/dates";
@@ -152,6 +154,9 @@ export function Hoy() {
           </button>
         </div>
       </section>
+
+      {/* Feriado próximo en México (Nager.Date): adelantar la compra */}
+      <HolidayNote />
 
       {/* Caducidades en Hoy + acceso al Modo revisar caducidades */}
       {expiringSoon.length > 0 && (
@@ -351,6 +356,9 @@ export function Hoy() {
           <ChevronRight className="size-5 text-stone" />
         </div>
       </button>
+
+      {/* Recetas públicas con lo que sí hay (TheMealDB), por caducidad */}
+      <RecipesCard />
 
       <BackupCard />
 

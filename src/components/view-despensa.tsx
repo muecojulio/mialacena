@@ -19,8 +19,10 @@ import {
   X,
 } from "lucide-react";
 import { BarcodeModal } from "@/components/barcode-modal";
+import { FactsPanel } from "@/components/facts-panel";
 import { Button, SelectField, TextField } from "@/components/ui";
 import { searchProducts } from "@/lib/catalog.functions";
+import { GRADE_COLORS, type OffProduct } from "@/lib/off";
 import { cn } from "@/lib/cn";
 import { dayKey, EXPIRY_SOON_DAYS, shortDay } from "@/lib/dates";
 import { fileToProductPhoto } from "@/lib/images";
@@ -41,6 +43,7 @@ import {
   type DespensaTab,
   type PackageType,
   type PantryItem,
+  type PublicFacts,
   type Unit,
 } from "@/lib/types";
 
@@ -197,6 +200,9 @@ export function Despensa() {
     unit?: string;
     targetQty?: number;
     usualPrice?: number;
+    packageSize?: number;
+    packageUnit?: string;
+    facts?: PublicFacts;
   }) {
     if (draft) {
       setDraft({
@@ -206,6 +212,9 @@ export function Despensa() {
         barcode: product.barcode,
         category: product.category || draft.category,
         packageType: (product.packageType as PackageType) || draft.packageType,
+        packageSize: product.packageSize ?? draft.packageSize,
+        packageUnit: product.packageUnit ?? draft.packageUnit,
+        facts: product.facts ?? draft.facts,
       });
     } else {
       setDraft({
@@ -219,8 +228,26 @@ export function Despensa() {
         targetQty: product.targetQty || 1,
         currentQty: product.targetQty || 1,
         usualPrice: product.usualPrice || 0,
+        packageSize: product.packageSize,
+        packageUnit: product.packageUnit,
+        facts: product.facts,
       });
     }
+  }
+
+  /** Al llegar la ficha pública: se guarda y solo rellena campos vacíos (no pisa lo que ya escribió la persona). */
+  function applyFacts(product: OffProduct) {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            facts: product.facts,
+            brand: prev.brand || product.brand,
+            packageSize: prev.packageSize ?? product.packageSize,
+            packageUnit: prev.packageUnit ?? product.packageUnit,
+          }
+        : prev,
+    );
   }
 
   function handleSendAllExpiringToList() {
@@ -368,17 +395,22 @@ export function Despensa() {
                   <div className="flex items-start justify-between gap-3">
                     {/* Miniatura de foto guardada localmente o botón rápido para agregarla */}
                     <div className="relative shrink-0">
-                      {item.photo ? (
+                      {item.photo || item.facts?.imageUrl ? (
                         <button
                           type="button"
                           onClick={() => setDraft(item)}
                           className="group relative block overflow-hidden rounded-2xl border border-line"
-                          title="Editar producto o cambiar foto"
+                          title={
+                            item.photo
+                              ? "Editar producto o cambiar foto"
+                              : "Foto pública de Open Food Facts — tocar para editar"
+                          }
                         >
                           <img
-                            src={item.photo}
+                            src={item.photo ?? item.facts?.imageUrl}
                             alt={item.name}
-                            className="size-16 object-cover"
+                            loading={item.photo ? undefined : "lazy"}
+                            className={item.photo ? "size-16 object-cover" : "size-16 bg-white object-contain"}
                           />
                         </button>
                       ) : (
@@ -411,6 +443,15 @@ export function Despensa() {
                         {item.isEssential && (
                           <span className="inline-flex items-center gap-0.5 rounded-md bg-clay/10 px-1.5 py-0.5 text-[10px] font-semibold text-clay">
                             <Star className="size-3 fill-clay" /> Imprescindible
+                          </span>
+                        )}
+                        {item.facts?.nutriscore && (
+                          <span
+                            className="inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+                            style={{ backgroundColor: GRADE_COLORS[item.facts.nutriscore] ?? "#888" }}
+                            title="Nutri-Score según Open Food Facts"
+                          >
+                            Nutri-Score {item.facts.nutriscore.toUpperCase()}
                           </span>
                         )}
                       </div>
@@ -1036,6 +1077,9 @@ export function Despensa() {
                           ...draft,
                           name: hint.name,
                           brand: hint.brand || draft.brand,
+                          // Si la sugerencia trae código, la ficha pública se trae sola abajo.
+                          barcode: hint.code || draft.barcode,
+                          facts: hint.code && hint.code !== draft.barcode ? undefined : draft.facts,
                         })
                       }
                     >
@@ -1046,6 +1090,9 @@ export function Despensa() {
                 </div>
               )}
               {hintNote && <p className="text-xs text-stone">{hintNote}</p>}
+
+              {/* Ficha pública OFF + precios Open Prices (solo con código de barras) */}
+              <FactsPanel draft={draft} onApply={applyFacts} />
 
               <TextField
                 label="Marca (opcional)"

@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { COMMON_BARCODES } from "./barcode-db.ts";
+import { offProductUrl, parseOffProduct } from "./off.ts";
+import { fetchJson } from "./public-fetch.ts";
+import type { PublicFacts } from "./types.ts";
 
 type BarcodeHit = {
   barcode: string;
@@ -10,6 +13,10 @@ type BarcodeHit = {
   unit?: string;
   targetQty?: number;
   usualPrice?: number;
+  packageSize?: number;
+  packageUnit?: string;
+  /** Ficha pública (Nutri-Score, alérgenos, foto…) cuando OFF conoce el código. */
+  facts?: PublicFacts;
 };
 
 type BarcodeOk = { ok: true; product: BarcodeHit };
@@ -42,42 +49,26 @@ export const lookupBarcode = createServerFn({ method: "POST" })
       };
     }
 
-    // Try Open Food Facts
-    try {
-      const url = `https://world.openfoodfacts.org/api/v2/product/${code}.json`;
-      const res = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "mialacena/1.0 (despensa personal)",
+    // Try Open Food Facts (público, sin llave): nombre, marca y ficha completa
+    const json = await fetchJson(offProductUrl(code));
+    const off = json ? parseOffProduct(json) : null;
+    if (off) {
+      return {
+        ok: true,
+        product: {
+          barcode: code,
+          name: off.name,
+          brand: off.brand,
+          category: off.categoryGuess ?? "Abarrotes",
+          packageType: "pieza",
+          unit: "pza",
+          targetQty: 1,
+          usualPrice: 0,
+          packageSize: off.packageSize,
+          packageUnit: off.packageUnit,
+          facts: off.facts,
         },
-      });
-
-      if (res.ok) {
-        const json = await res.json() as any;
-        if (json && json.status === 1 && json.product) {
-          const p = json.product;
-          const name = String(p.product_name_es || p.product_name || p.generic_name || "").trim();
-          const brand = Array.isArray(p.brands_tags)
-            ? String(p.brands_tags[0] || "").trim()
-            : String(p.brands || "").split(",")[0]?.trim() || "";
-
-          return {
-            ok: true,
-            product: {
-              barcode: code,
-              name: name || `Producto ${code}`,
-              brand: brand || "",
-              category: "Abarrotes",
-              packageType: "pieza",
-              unit: "pza",
-              targetQty: 1,
-              usualPrice: 0,
-            },
-          };
-        }
-      }
-    } catch {
-      // ignore network errors to fallback
+      };
     }
 
     // Fallback: Return code with a generic suggestion

@@ -51,6 +51,36 @@ function Privacidad() {
             que escribes, no tu lista ni tus precios.
           </p>
         </section>
+        <section className="rounded-3xl bg-card p-5 text-sm leading-relaxed">
+          <h2 className="font-medium">Servicios públicos sin cuenta</h2>
+          <p className="mt-2 text-stone">
+            Ninguno pide registro ni llave, y cada uno recibe lo mínimo, solo cuando lo usas:
+          </p>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-stone">
+            <li>
+              <strong className="text-ink">Open Food Facts y Open Prices:</strong> el código de barras que
+              escaneaste, para traer su ficha (Nutri-Score, alérgenos, ingredientes) y precios públicos de
+              referencia. La ficha se guarda después en tu teléfono.
+            </li>
+            <li>
+              <strong className="text-ink">TheMealDB:</strong> un ingrediente en inglés («egg», «milk») para
+              sugerir recetas. No viajan cantidades ni precios.
+            </li>
+            <li>
+              <strong className="text-ink">Nager.Date:</strong> solo se pregunta qué feriados vienen en
+              México; no viaja ningún dato tuyo.
+            </li>
+            <li>
+              <strong className="text-ink">OpenStreetMap (Overpass):</strong> al pulsar «Buscar cerca de
+              mí», tu ubicación va directo de tu teléfono al mapa público, con el permiso del sistema. No
+              pasa por el servidor de mialacena ni se guarda.
+            </li>
+          </ul>
+          <p className="mt-2 text-stone">
+            La lectura de códigos de barras (ZXing) y el OCR de tickets (Tesseract.js) corren dentro de tu
+            teléfono: esas fotos no salen a ningún servicio.
+          </p>
+        </section>
         <section className="rounded-3xl border border-line p-5">
           <h2 className="font-medium">Borrar este teléfono</h2>
           <p className="mt-2 text-sm text-stone">
