@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   Bell,
   CalendarClock,
@@ -8,9 +7,7 @@ import {
   Clock,
   PackageCheck,
   Scale,
-  ShieldCheck,
   ShoppingCart,
-  Smartphone,
   Star,
 } from "lucide-react";
 import { BackupCard } from "@/components/backup-card";
@@ -28,14 +25,6 @@ import {
 import { homeSummary, type HomeSummary } from "@/lib/restock";
 import { lineFromItem, usePantry } from "@/lib/store";
 import { REVIEW_INTERVAL_OPTIONS } from "@/lib/types";
-
-function installApp() {
-  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const url = new URL(window.location.href);
-  url.searchParams.set("install", "1");
-  url.searchParams.set("platform", ios ? "ios" : "android");
-  window.location.assign(url.toString());
-}
 
 /** «Ya en casa: 5 productos de tu compra del 21 oct. Cuentan como repuestos hasta el próximo escaneo.» */
 function restockNote({ restocked, since, until }: HomeSummary): string {
@@ -431,34 +420,6 @@ export function Hoy() {
       <RecipesCard />
 
       <BackupCard />
-
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={installApp}
-          className="grad-night flex h-28 flex-col items-start justify-between rounded-3xl p-4 text-left shadow-md transition-transform duration-150 ease-out active:scale-[0.96]"
-        >
-          <span className="icon-blob icon-grape size-9 bg-white/25">
-            <Smartphone className="size-5 text-white" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold text-white">Instalar app</span>
-            <span className="block text-[11px] text-white/80">Como en el celular 📲</span>
-          </span>
-        </button>
-        <Link
-          to="/privacidad"
-          className="grad-ocean flex h-28 flex-col items-start justify-between rounded-3xl p-4 shadow-md transition-transform duration-150 ease-out active:scale-[0.96]"
-        >
-          <span className="icon-blob size-9 bg-white/25">
-            <ShieldCheck className="size-5 text-white" />
-          </span>
-          <span>
-            <span className="block text-sm font-bold text-white">Privacidad</span>
-            <span className="block text-[11px] text-white/80">Tus datos, tus reglas 🔒</span>
-          </span>
-        </Link>
-      </div>
     </div>
   );
 }

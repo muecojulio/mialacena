@@ -404,5 +404,14 @@ test("Store: guardar foto local, ajustar existencias y pasar faltantes a la list
   usePantry.getState().openDespensaTab("caducidades");
   assert.equal(usePantry.getState().view, "despensa");
   assert.equal(usePantry.getState().despensaTab, "caducidades");
+
+  // 5. Pestañas de Instalar app y Privacidad
+  usePantry.getState().setView("instalar");
+  assert.equal(usePantry.getState().view, "instalar");
+  usePantry.getState().setView("privacidad");
+  assert.equal(usePantry.getState().view, "privacidad");
+  usePantry.getState().setView("hoy");
+  assert.equal(usePantry.getState().view, "hoy");
 });
+
 
