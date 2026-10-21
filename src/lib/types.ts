@@ -4,6 +4,28 @@ export type Unit = (typeof UNITS)[number];
 export const PACKAGE_TYPES = ["pieza", "paquete", "bolsa", "lata", "botella", "caja", "frasco", "bote"] as const;
 export type PackageType = (typeof PACKAGE_TYPES)[number];
 
+export const CONSUMPTION_UNITS = [
+  "piezas",
+  "pza",
+  "kg",
+  "g",
+  "L",
+  "ml",
+  "rollos",
+  "latas",
+  "sobres",
+  "paquetes",
+] as const;
+export type ConsumptionUnit = (typeof CONSUMPTION_UNITS)[number];
+
+export const REVIEW_INTERVAL_OPTIONS = [
+  { days: 3, label: "Cada 3 días" },
+  { days: 7, label: "Cada 7 días (semanal)" },
+  { days: 14, label: "Cada 14 días (quincenal)" },
+  { days: 30, label: "Cada 30 días (mensual)" },
+  { days: 0, label: "Desactivado" },
+] as const;
+
 export const CATEGORIES = [
   "Abarrotes",
   "Lácteos y huevo",
@@ -19,17 +41,20 @@ export type PantryItem = {
   name: string;
   brand: string;
   category: string;
-  targetQty: number; // in pantry unit (e.g. 2 L or 1 kg)
+  targetQty: number; // in pantry unit (e.g. 2 L or 1 kg) — "qué debería tener"
+  currentQty?: number; // in pantry unit — "qué tengo ahora"
   unit: Unit;
   usualPrice: number;
   lastPrice?: number; // Last real price paid from tickets or completed lists
   lastPriceDate?: string;
   packageType?: PackageType; // How it's bought: bolsa, paquete, pieza...
-  packageSize?: number; // e.g., 1 pack = 1 kg
-  packageUnit?: string;
+  packageSize?: number; // e.g., 1 paquete = 6 piezas
+  packageUnit?: string; // e.g., "piezas", "kg", "L", "g"
   isEssential?: boolean; // "Imprescindible" - no puede faltar
   barcode?: string;
   expiresAt?: string; // YYYY-MM-DD
+  /** Foto del producto guardada localmente en el teléfono (data URL JPEG comprimida). */
+  photo?: string;
   /**
    * ISO. Se marcó como «ya lo llevo» en una compra finalizada: cuenta como repuesto (en casa)
    * hasta el próximo escaneo, con foto o a mano.
@@ -84,3 +109,5 @@ export type ShopList = {
 };
 
 export type ViewId = "hoy" | "despensa" | "escanear" | "lista" | "guardadas";
+export type DespensaTab = "catalogo" | "comparar" | "caducidades";
+

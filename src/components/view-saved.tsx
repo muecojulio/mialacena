@@ -1,4 +1,4 @@
-import { downloadExcel } from "@/lib/excel";
+import { categoryTotals, downloadExcel } from "@/lib/excel";
 import { lineAmount, mxn, stamp } from "@/lib/money";
 import { usePantry } from "@/lib/store";
 import { Button } from "@/components/ui";
@@ -30,6 +30,7 @@ export function Guardadas() {
       <ul className="flex flex-col gap-3">
         {saved.map((list) => {
           const total = list.lines.reduce((sum, line) => sum + lineAmount(line.qty, line.unitPrice), 0);
+          const catSubtotals = categoryTotals(list);
           return (
             <li key={list.id} className="rounded-3xl border border-line bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -47,6 +48,18 @@ export function Guardadas() {
                 </div>
               </div>
               <p className="mt-2 text-sm text-stone">{list.lines.length} productos</p>
+              {catSubtotals.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {catSubtotals.map((cat) => (
+                    <span
+                      key={cat.category}
+                      className="rounded-lg bg-soft px-2 py-1 text-[11px] text-stone"
+                    >
+                      {cat.category}: <strong className="text-ink">{mxn(cat.total)}</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 grid grid-cols-4 gap-2">
                 <Button variant="quiet" className="px-2 text-xs" onClick={() => reuseSaved(list.id)}>
                   Repetir

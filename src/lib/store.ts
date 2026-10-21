@@ -3,15 +3,17 @@ import { persist } from "zustand/middleware";
 import type { Backup } from "./backup.ts";
 import { dayKey, isExpired } from "./dates.ts";
 import { plural } from "./money.ts";
+import { comparePantryItem, describePurchaseVsConsumption } from "./pantry-helpers.ts";
 import { carriedPantryIds, clearRestocked, markRestocked, withoutRestock } from "./restock.ts";
 import { SEED } from "./seed.ts";
-import type { ListLine, PantryItem, ScanReport, ShopList, ViewId } from "./types.ts";
+import type { DespensaTab, ListLine, PantryItem, ScanReport, ShopList, ViewId } from "./types.ts";
 
 type Notice = { id: number; text: string } | null;
 
 type PantryState = {
   theme: "light" | "dark";
   view: ViewId;
+  despensaTab: DespensaTab;
   items: PantryItem[];
   current: ShopList | null;
   saved: ShopList[];
@@ -19,9 +21,18 @@ type PantryState = {
   notice: Notice;
   oneHandedMode: boolean; // Modo de una sola mano con letras grandes
   lastBackupAt: string | null; // Último respaldo en archivo (ISO)
+  reviewIntervalDays: number; // Recordatorio periódico de revisar despensa (días, 0 = desactivado)
+  lastReviewedAt: string | null; // Última vez que se revisó la despensa (ISO)
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: ViewId) => void;
+  setDespensaTab: (tab: DespensaTab) => void;
+  openDespensaTab: (tab: DespensaTab) => void;
   setOneHandedMode: (enabled: boolean) => void;
+  setReviewIntervalDays: (days: number) => void;
+  markPantryReviewed: (at?: string) => void;
+  setItemCurrentQty: (id: string, qty: number) => void;
+  setItemPhoto: (id: string, photo: string | undefined) => void;
+  sendMissingFromComparisonToList: () => void;
   upsertItem: (item: PantryItem) => void;
   removeItem: (id: string) => void;
   removePreload: () => void;
@@ -86,16 +97,20 @@ function savedTitle(title: string, taken: string[]): string {
   return candidate;
 }
 
-export function lineFromItem(item: PantryItem, qty = item.targetQty): ListLine {
+export function lineFromItem(item: PantryItem, qty?: number): ListLine {
   // If item has a last real price paid, start with that! Otherwise usualPrice
   const initialPrice = (item.lastPrice !== undefined && item.lastPrice > 0) ? item.lastPrice : item.usualPrice;
+  const computedQty =
+    qty !== undefined
+      ? qty
+      : describePurchaseVsConsumption(item, item.targetQty).packagesCount;
   return {
     id: crypto.randomUUID(),
     pantryItemId: item.id,
     name: item.name,
     brand: item.brand,
     unit: item.packageType || item.unit,
-    qty,
+    qty: Math.max(1, computedQty),
     unitPrice: initialPrice,
     inCart: false,
     isEssential: item.isEssential,
@@ -109,6 +124,7 @@ export const usePantry = create<PantryState>()(
     (set, get) => ({
       theme: "dark",
       view: "hoy",
+      despensaTab: "catalogo",
       items: SEED,
       current: null,
       saved: [],
@@ -116,9 +132,103 @@ export const usePantry = create<PantryState>()(
       notice: null,
       oneHandedMode: false,
       lastBackupAt: null,
+      reviewIntervalDays: 7,
+      lastReviewedAt: null,
       setTheme: (theme) => set({ theme }),
       setView: (view) => set({ view }),
+      setDespensaTab: (despensaTab) => set({ despensaTab }),
+      openDespensaTab: (despensaTab) => set({ view: "despensa", despensaTab }),
       setOneHandedMode: (oneHandedMode) => set({ oneHandedMode }),
+      setReviewIntervalDays: (reviewIntervalDays) =>
+        set({
+          reviewIntervalDays,
+          notice: {
+            id: Date.now(),
+            text:
+              reviewIntervalDays > 0
+                ? `Recordatorio ajustado: revisar despensa cada ${reviewIntervalDays} días.`
+                : "Recordatorio de revisar despensa desactivado.",
+          },
+        }),
+      markPantryReviewed: (at) => {
+        const stampIso = at ?? nowIso();
+        set({
+          lastReviewedAt: stampIso,
+          notice: { id: Date.now(), text: "Despensa marcada como revisada hoy." },
+        });
+      },
+      setItemCurrentQty: (id, qty) =>
+        set((state) => {
+          const clean = Math.max(0, Math.round(qty * 100) / 100);
+          return {
+            items: state.items.map((row) => {
+              if (row.id !== id) return row;
+              const next: PantryItem = { ...row, currentQty: clean };
+              if (clean < row.targetQty && next.restockedAt) {
+                delete next.restockedAt;
+              }
+              return next;
+            }),
+          };
+        }),
+      setItemPhoto: (id, photo) =>
+        set((state) => ({
+          items: state.items.map((row) => {
+            if (row.id !== id) return row;
+            if (!photo) {
+              const { photo: _photo, ...rest } = row;
+              return rest;
+            }
+            return { ...row, photo };
+          }),
+        })),
+      sendMissingFromComparisonToList: () => {
+        const state = get();
+        const rows = state.items.map((it) => comparePantryItem(it, state.lastScan));
+        const missingRows = rows
+          .filter((r) => r.missingQty > 0)
+          .sort((a, b) => {
+            if (a.item.isEssential && !b.item.isEssential) return -1;
+            if (!a.item.isEssential && b.item.isEssential) return 1;
+            return 0;
+          });
+
+        if (missingRows.length === 0) {
+          state.toast("¡Tu despensa está completa! No falta ningún producto.");
+          return;
+        }
+
+        const current = state.current ?? blankList("manual", "Faltantes de mi despensa");
+        const nextLines = [...current.lines];
+        let added = 0;
+
+        for (const r of missingRows) {
+          const existingIdx = nextLines.findIndex((l) => l.pantryItemId === r.item.id);
+          const qtyToBuy = Math.max(1, r.packagesToBuy);
+          if (existingIdx >= 0) {
+            nextLines[existingIdx] = {
+              ...nextLines[existingIdx]!,
+              qty: qtyToBuy,
+            };
+          } else {
+            nextLines.push(lineFromItem(r.item, qtyToBuy));
+          }
+          added += 1;
+        }
+
+        set({
+          current: {
+            ...current,
+            updatedAt: nowIso(),
+            lines: nextLines,
+          },
+          view: "lista",
+          notice: {
+            id: Date.now(),
+            text: `Se pasaron ${plural(added, "faltante", "faltantes")} a la lista de compra.`,
+          },
+        });
+      },
       upsertItem: (item) =>
         set((state) => {
           const exists = state.items.some((row) => row.id === item.id);
@@ -139,7 +249,11 @@ export const usePantry = create<PantryState>()(
           };
         }),
       rememberScan: (report) =>
-        set((state) => ({ lastScan: report, items: clearRestocked(state.items) })),
+        set((state) => ({
+          lastScan: report,
+          lastReviewedAt: report.at,
+          items: clearRestocked(state.items),
+        })),
       openList: (list) => set({ current: { ...list, updatedAt: nowIso() }, view: "lista" }),
       patchLine: (id, patch) =>
         set((state) => {
@@ -366,6 +480,7 @@ export const usePantry = create<PantryState>()(
           saved: [],
           lastScan: null,
           lastBackupAt: null,
+          lastReviewedAt: null,
           view: "hoy",
           notice: { id: Date.now(), text: "Se borraron despensa y listas de este teléfono." },
         }),
@@ -403,6 +518,9 @@ export const usePantry = create<PantryState>()(
             lastScan: data.lastScan,
             theme: data.theme ?? state.theme,
             oneHandedMode: data.oneHandedMode ?? state.oneHandedMode,
+            reviewIntervalDays: data.reviewIntervalDays ?? state.reviewIntervalDays,
+            lastReviewedAt:
+              data.lastReviewedAt !== undefined ? data.lastReviewedAt : state.lastReviewedAt,
             // Lo que hay ahora en el teléfono es justo ese respaldo.
             lastBackupAt: backup.exportedAt,
             view: "hoy",
@@ -419,12 +537,15 @@ export const usePantry = create<PantryState>()(
       partialize: (state) => ({
         theme: state.theme,
         view: state.view,
+        despensaTab: state.despensaTab,
         items: state.items,
         current: state.current,
         saved: state.saved,
         lastScan: state.lastScan,
         oneHandedMode: state.oneHandedMode,
         lastBackupAt: state.lastBackupAt,
+        reviewIntervalDays: state.reviewIntervalDays,
+        lastReviewedAt: state.lastReviewedAt,
       }),
     },
   ),

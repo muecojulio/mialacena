@@ -48,6 +48,8 @@ export function BackupCard() {
         lastScan: state.lastScan,
         theme: state.theme,
         oneHandedMode: state.oneHandedMode,
+        reviewIntervalDays: state.reviewIntervalDays,
+        lastReviewedAt: state.lastReviewedAt,
       },
       now,
     );

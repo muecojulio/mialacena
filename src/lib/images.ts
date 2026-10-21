@@ -1,19 +1,26 @@
 const MAX_EDGE = 768;
 const JPEG_QUALITY = 0.62;
+const PRODUCT_PHOTO_MAX_EDGE = 280;
+const PRODUCT_PHOTO_QUALITY = 0.68;
 
-function canvasToJpeg(source: CanvasImageSource, width: number, height: number): string {
+function canvasToJpeg(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  quality = JPEG_QUALITY,
+): string {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo preparar la imagen");
   ctx.drawImage(source, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
-function fit(width: number, height: number): { width: number; height: number } {
+function fit(width: number, height: number, maxEdge = MAX_EDGE): { width: number; height: number } {
   const edge = Math.max(width, height);
-  const scale = edge > MAX_EDGE ? MAX_EDGE / edge : 1;
+  const scale = edge > maxEdge ? maxEdge / edge : 1;
   return {
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
@@ -23,8 +30,21 @@ function fit(width: number, height: number): { width: number; height: number } {
 export async function fileToJpeg(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
   try {
-    const size = fit(bitmap.width, bitmap.height);
-    return canvasToJpeg(bitmap, size.width, size.height);
+    const size = fit(bitmap.width, bitmap.height, MAX_EDGE);
+    return canvasToJpeg(bitmap, size.width, size.height, JPEG_QUALITY);
+  } finally {
+    bitmap.close();
+  }
+}
+
+/**
+ * Comprime una foto de producto para guardarla localmente en el teléfono (y en respaldos).
+ */
+export async function fileToProductPhoto(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const size = fit(bitmap.width, bitmap.height, PRODUCT_PHOTO_MAX_EDGE);
+    return canvasToJpeg(bitmap, size.width, size.height, PRODUCT_PHOTO_QUALITY);
   } finally {
     bitmap.close();
   }

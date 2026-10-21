@@ -13,26 +13,26 @@ import {
   Sparkles,
   Star,
   DollarSign,
-  AlertCircle,
-  Eye,
-  EyeOff,
   PackageCheck,
 } from "lucide-react";
 import { Button, TextField } from "@/components/ui";
-import { downloadExcel } from "@/lib/excel";
+import { categoryTotals, downloadExcel, SUPERMARKET_AISLE_ORDER } from "@/lib/excel";
 import { lineAmount, mxn, parseMoney, parseQty, plural } from "@/lib/money";
+import { formatLineConsumptionDetail } from "@/lib/pantry-helpers";
 import { carriedPantryIds } from "@/lib/restock";
 import { usePantry } from "@/lib/store";
-import type { ListLine } from "@/lib/types";
+import type { ListLine, PantryItem } from "@/lib/types";
 import { shareViaWhatsApp } from "@/lib/whatsapp";
 import { TicketModal } from "@/components/ticket-modal";
 import { BarcodeModal } from "@/components/barcode-modal";
 
 function LineCard({
   line,
+  pantryItem,
   oneHanded,
 }: {
   line: ListLine;
+  pantryItem?: PantryItem;
   oneHanded: boolean;
 }) {
   const patchLine = usePantry((state) => state.patchLine);
@@ -40,6 +40,15 @@ function LineCard({
   const [qty, setQty] = useState(String(line.qty));
   const [price, setPrice] = useState(String(line.unitPrice));
   const amount = lineAmount(line.qty, line.unitPrice);
+  const consumptionDetail = pantryItem ? formatLineConsumptionDetail(pantryItem, line.qty) : null;
+
+  useEffect(() => {
+    setQty(String(line.qty));
+  }, [line.qty]);
+
+  useEffect(() => {
+    setPrice(String(line.unitPrice));
+  }, [line.unitPrice]);
 
   function commitQty(raw: string) {
     const next = parseQty(raw);
@@ -74,6 +83,13 @@ function LineCard({
         }`}
       >
         <div className="flex items-center justify-between gap-3">
+          {pantryItem?.photo && (
+            <img
+              src={pantryItem.photo}
+              alt={line.name}
+              className="size-14 shrink-0 rounded-2xl border border-line object-cover"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <p className={`text-2xl font-bold tracking-tight ${line.inCart ? "line-through text-stone" : "text-ink"}`}>
               {line.name}
@@ -81,6 +97,9 @@ function LineCard({
             <p className="mt-1 text-base text-stone">
               {line.qty} {line.unit} {line.brand ? `· ${line.brand}` : ""}
             </p>
+            {consumptionDetail && (
+              <p className="mt-0.5 text-xs font-medium text-clay">{consumptionDetail}</p>
+            )}
           </div>
         </div>
 
@@ -106,42 +125,58 @@ function LineCard({
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <p className={line.inCart ? "font-medium line-through decoration-sage" : "font-medium"}>
-              {line.name}
-            </p>
-            {line.isEssential && (
-              <span className="inline-flex items-center gap-0.5 rounded bg-clay/10 px-1 py-0.5 text-[10px] font-semibold text-clay">
-                <Star className="size-3 fill-clay" /> Imprescindible
-              </span>
-            )}
-            {line.isExtra && (
-              <span className="inline-flex items-center rounded bg-stone/15 px-1.5 py-0.5 text-[10px] font-semibold text-stone">
-                Extra de visita
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-stone">{line.brand || "Sin marca"}</p>
-
-          {/* Lo que has pagado: Historial de precio y si subió */}
-          {hasHistory && (
-            <div className="mt-1 flex items-center gap-1 text-xs">
-              <span className="text-stone">Antes: {mxn(line.lastPaidPrice!)}</span>
-              {priceIncreased && (
-                <span className="inline-flex items-center font-medium text-clay">
-                  <TrendingUp className="mr-0.5 size-3" /> Subió {mxn(priceDiff)}
+        <div className="flex min-w-0 items-start gap-3">
+          {pantryItem?.photo && (
+            <img
+              src={pantryItem.photo}
+              alt={line.name}
+              className="size-12 shrink-0 rounded-2xl border border-line object-cover"
+            />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className={line.inCart ? "font-medium line-through decoration-sage" : "font-medium"}>
+                {line.name}
+              </p>
+              {line.isEssential && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-clay/10 px-1 py-0.5 text-[10px] font-semibold text-clay">
+                  <Star className="size-3 fill-clay" /> Imprescindible
                 </span>
               )}
-              {priceDecreased && (
-                <span className="inline-flex items-center font-medium text-sage">
-                  <TrendingDown className="mr-0.5 size-3" /> Bajó {mxn(Math.abs(priceDiff))}
+              {line.isExtra && (
+                <span className="inline-flex items-center rounded bg-stone/15 px-1.5 py-0.5 text-[10px] font-semibold text-stone">
+                  Extra de visita
                 </span>
               )}
             </div>
-          )}
+            <p className="text-sm text-stone">{line.brand || "Sin marca"}</p>
+
+            {/* Unidades de compra vs. consumo (ej. "1 paquete = 6 piezas") */}
+            {consumptionDetail && (
+              <p className="mt-1 inline-block rounded-lg bg-clay/10 px-2 py-0.5 text-xs font-medium text-clay">
+                {consumptionDetail}
+              </p>
+            )}
+
+            {/* Lo que has pagado: Historial de precio y si subió */}
+            {hasHistory && (
+              <div className="mt-1 flex items-center gap-1 text-xs">
+                <span className="text-stone">Antes: {mxn(line.lastPaidPrice!)}</span>
+                {priceIncreased && (
+                  <span className="inline-flex items-center font-medium text-clay">
+                    <TrendingUp className="mr-0.5 size-3" /> Subió {mxn(priceDiff)}
+                  </span>
+                )}
+                {priceDecreased && (
+                  <span className="inline-flex items-center font-medium text-sage">
+                    <TrendingDown className="mr-0.5 size-3" /> Bajó {mxn(Math.abs(priceDiff))}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="text-right">
+        <div className="shrink-0 text-right">
           <p className="font-medium">{mxn(amount)}</p>
           <span className="text-xs text-stone">{line.unit}</span>
         </div>
@@ -312,24 +347,24 @@ export function Lista() {
     return 0;
   });
 
-  const categoriesOrder = [
-    "Lácteos y huevo",
-    "Frutas y verduras",
-    "Abarrotes",
-    "Bebidas",
-    "Limpieza",
-    "Botanas",
-    "Otros",
-  ];
+  const pantryById = new Map(items.map((it) => [it.id, it]));
+  const catSubtotals = categoryTotals(current);
+  const catSubtotalByName = new Map(catSubtotals.map((c) => [c.category, c]));
 
-  // Group lines by category
+  // Group lines by category in supermarket aisle order
   const groupedByCategoryMap = new Map<string, ListLine[]>();
+  for (const cat of SUPERMARKET_AISLE_ORDER) {
+    const matching = sortedLines.filter((l) => (l.category || "Abarrotes") === cat);
+    if (matching.length > 0) groupedByCategoryMap.set(cat, matching);
+  }
   for (const line of sortedLines) {
     const cat = line.category || "Abarrotes";
     if (!groupedByCategoryMap.has(cat)) {
       groupedByCategoryMap.set(cat, []);
     }
-    groupedByCategoryMap.get(cat)!.push(line);
+    if (!(SUPERMARKET_AISLE_ORDER as readonly string[]).includes(cat)) {
+      groupedByCategoryMap.get(cat)!.push(line);
+    }
   }
 
   return (
@@ -485,27 +520,78 @@ export function Lista() {
         <p className="text-sm text-stone">Agrega productos o escanéala para llenarla con lo que falta.</p>
       )}
 
+      {/* Total por categoría en la lista */}
+      {catSubtotals.length > 0 && !oneHandedMode && (
+        <section className="rounded-3xl border border-line bg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-stone uppercase">
+              Total por categoría
+            </p>
+            <span className="text-xs text-stone">{catSubtotals.length} categorías</span>
+          </div>
+          <ul className="mt-2.5 flex flex-col gap-1.5">
+            {catSubtotals.map((cat) => (
+              <li
+                key={cat.category}
+                className="flex items-center justify-between rounded-2xl bg-soft px-3 py-2 text-xs"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-ink">{cat.category}</span>
+                  <span className="text-stone">({cat.count} art.)</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-right">
+                  {cat.carried > 0 && (
+                    <span className="text-sage">Carrito: {mxn(cat.carried)}</span>
+                  )}
+                  <span className="font-semibold text-ink">{mxn(cat.total)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Lines display: Grouped by category (Orden del súper) or Flat */}
       {groupByCategory ? (
         <div className="flex flex-col gap-6">
-          {Array.from(groupedByCategoryMap.entries()).map(([category, lines]) => (
-            <div key={category} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between border-b border-line pb-1">
-                <h3 className="font-display text-lg font-medium">{category}</h3>
-                <span className="text-xs text-stone">{lines.length} art.</span>
+          {Array.from(groupedByCategoryMap.entries()).map(([category, lines]) => {
+            const sub = catSubtotalByName.get(category);
+            return (
+              <div key={category} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between border-b border-line pb-1.5">
+                  <h3 className="font-display text-lg font-medium">{category}</h3>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-stone">{lines.length} art.</span>
+                    {sub && (
+                      <span className="rounded-lg bg-soft px-2 py-0.5 font-semibold text-ink">
+                        {mxn(sub.total)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ul className="flex flex-col gap-3">
+                  {lines.map((line) => (
+                    <LineCard
+                      key={line.id}
+                      line={line}
+                      pantryItem={line.pantryItemId ? pantryById.get(line.pantryItemId) : undefined}
+                      oneHanded={oneHandedMode}
+                    />
+                  ))}
+                </ul>
               </div>
-              <ul className="flex flex-col gap-3">
-                {lines.map((line) => (
-                  <LineCard key={line.id} line={line} oneHanded={oneHandedMode} />
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
           {sortedLines.map((line) => (
-            <LineCard key={line.id} line={line} oneHanded={oneHandedMode} />
+            <LineCard
+              key={line.id}
+              line={line}
+              pantryItem={line.pantryItemId ? pantryById.get(line.pantryItemId) : undefined}
+              oneHanded={oneHandedMode}
+            />
           ))}
         </ul>
       )}

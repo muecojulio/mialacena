@@ -30,6 +30,8 @@ export type BackupData = {
   lastScan: ScanReport | null;
   theme?: "light" | "dark";
   oneHandedMode?: boolean;
+  reviewIntervalDays?: number;
+  lastReviewedAt?: string | null;
 };
 
 export type Backup = {
@@ -156,6 +158,7 @@ const itemShape: Shape<PantryItem> = {
   brand: or(text, ""),
   category: or(filled, "Otros"),
   targetQty: or(positive, 1),
+  currentQty: nonNegative,
   unit: or(oneOf(UNITS), "pza"),
   usualPrice: or(nonNegative, 0),
   lastPrice: nonNegative,
@@ -166,6 +169,7 @@ const itemShape: Shape<PantryItem> = {
   isEssential: flag,
   barcode: filled,
   expiresAt: calendarDay,
+  photo: filled,
   restockedAt: instant,
 };
 
@@ -240,6 +244,8 @@ export function parseBackup(source: string): ParsedBackup {
   }
 
   const open = readList(data.current);
+  const parsedInterval = nonNegative(data.reviewIntervalDays);
+  const parsedReviewedAt = instant(data.lastReviewedAt);
   return {
     ok: true,
     backup: {
@@ -255,6 +261,12 @@ export function parseBackup(source: string): ParsedBackup {
         lastScan: readShape(data.lastScan, scanShape, ["id", "at"]),
         theme: oneOf(["light", "dark"] as const)(data.theme),
         oneHandedMode: flag(data.oneHandedMode),
+        ...(parsedInterval !== undefined ? { reviewIntervalDays: Math.round(parsedInterval) } : {}),
+        ...(parsedReviewedAt !== undefined
+          ? { lastReviewedAt: parsedReviewedAt }
+          : data.lastReviewedAt === null
+            ? { lastReviewedAt: null }
+            : {}),
       },
     },
   };
