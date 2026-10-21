@@ -2,6 +2,48 @@ import { zipStore } from "./zip.ts";
 import { lineAmount, mxn } from "./money.ts";
 import type { ShopList } from "./types.ts";
 
+export type CategorySubtotal = {
+  category: string;
+  count: number;
+  total: number;
+  carried: number;
+};
+
+export const SUPERMARKET_AISLE_ORDER = [
+  "Lácteos y huevo",
+  "Frutas y verduras",
+  "Abarrotes",
+  "Bebidas",
+  "Limpieza",
+  "Botanas",
+  "Otros",
+] as const;
+
+export function categoryTotals(list: ShopList): CategorySubtotal[] {
+  const byCat = new Map<string, CategorySubtotal>();
+  for (const line of list.lines) {
+    const category = line.category?.trim() || "Abarrotes";
+    const amount = lineAmount(line.qty, line.unitPrice);
+    const current = byCat.get(category) ?? {
+      category,
+      count: 0,
+      total: 0,
+      carried: 0,
+    };
+    current.count += 1;
+    current.total = Math.round((current.total + amount) * 100) / 100;
+    if (line.inCart) {
+      current.carried = Math.round((current.carried + amount) * 100) / 100;
+    }
+    byCat.set(category, current);
+  }
+  const orderOf = (cat: string) => {
+    const idx = (SUPERMARKET_AISLE_ORDER as readonly string[]).indexOf(cat);
+    return idx === -1 ? 999 : idx;
+  };
+  return Array.from(byCat.values()).sort((a, b) => orderOf(a.category) - orderOf(b.category));
+}
+
 export function xml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -95,6 +137,45 @@ export function sheetXml(list: ShopList): string {
   const titleText = `mialacena · ${list.title}`;
   const subText = `${when} · ${lines.length} producto${lines.length === 1 ? "" : "s"} · los precios los pusiste tú · total en la app: ${mxn(total)}`;
 
+  const catTotals = categoryTotals(list);
+  const catHeaderRow = carriedRow + 2;
+  const categoryBlock =
+    catTotals.length > 0
+      ? [
+          row(
+            catHeaderRow,
+            [
+              textCell(c(0, catHeaderRow), S.header, "Total por categoría"),
+              textCell(c(1, catHeaderRow), S.header, ""),
+              textCell(c(2, catHeaderRow), S.header, "Productos"),
+              textCell(c(3, catHeaderRow), S.header, ""),
+              textCell(c(4, catHeaderRow), S.header, ""),
+              textCell(c(5, catHeaderRow), S.header, "En carrito"),
+              textCell(c(6, catHeaderRow), S.header, "Importe"),
+            ].join(""),
+            20,
+          ),
+          ...catTotals.map((cat, idx) => {
+            const r = catHeaderRow + 1 + idx;
+            const alt = idx % 2 === 1;
+            return row(
+              r,
+              [
+                textCell(c(0, r), alt ? S.alt : S.base, cat.category),
+                textCell(c(1, r), alt ? S.alt : S.base, ""),
+                numCell(c(2, r), alt ? S.qtyAlt : S.qty, cat.count),
+                textCell(c(3, r), alt ? S.alt : S.base, "art."),
+                textCell(c(4, r), alt ? S.alt : S.base, ""),
+                numCell(c(5, r), alt ? S.moneyAlt : S.money, cat.carried),
+                numCell(c(6, r), alt ? S.moneyAlt : S.money, cat.total),
+              ].join(""),
+            );
+          }),
+        ].join("")
+      : "";
+
+  const finalRow = catTotals.length > 0 ? catHeaderRow + catTotals.length : carriedRow;
+
   const body = [
     row(1, textCell("A1", S.title, titleText), 34),
     row(2, textCell("A2", S.subtitle, subText), 18),
@@ -126,6 +207,7 @@ export function sheetXml(list: ShopList): string {
       ].join(""),
       20,
     ),
+    categoryBlock,
   ].join("");
 
   // An empty list has no row 5, and Excel rejects an autoFilter over nothing.
@@ -133,7 +215,7 @@ export function sheetXml(list: ShopList): string {
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<dimension ref="A1:G${carriedRow}"/>
+<dimension ref="A1:G${finalRow}"/>
 <sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
 <sheetFormatPr defaultRowHeight="15"/>
 <cols>
