@@ -4,6 +4,7 @@ import { Button, TextField } from "@/components/ui";
 import { lookupBarcode } from "@/lib/barcode.functions";
 import { detectBarcodeFromImage } from "@/lib/barcode-detector";
 import { fileToJpeg } from "@/lib/images";
+import type { PublicFacts } from "@/lib/types";
 
 export type BarcodeModalProps = {
   isOpen: boolean;
@@ -17,6 +18,9 @@ export type BarcodeModalProps = {
     unit?: string;
     targetQty?: number;
     usualPrice?: number;
+    packageSize?: number;
+    packageUnit?: string;
+    facts?: PublicFacts;
   }) => void;
   title?: string;
 };
@@ -154,7 +158,9 @@ export function BarcodeModal({ isOpen, onClose, onFound, title = "Escanear códi
         </div>
 
         <p className="mb-4 text-xs text-stone">
-          Apunta al código o toma una foto. Open Food Facts consultará nombre y marca al instante.
+          Apunta al código o toma una foto. Open Food Facts (público, sin cuenta) trae nombre, marca y
+          ficha completa. Si tu navegador no lee códigos por sí solo, la lectura se hace aquí mismo en
+          el teléfono con la librería abierta ZXing.
         </p>
 
         {error && (

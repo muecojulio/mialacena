@@ -36,6 +36,30 @@ export const CATEGORIES = [
   "Otros",
 ] as const;
 
+/**
+ * Ficha pública de un producto (Open Food Facts, sin cuenta ni llave).
+ * Solo datos del producto: nada de esto sale del teléfono una vez guardado.
+ */
+export type PublicFacts = {
+  source: "openfoodfacts";
+  code: string;
+  imageUrl?: string;
+  nutriscore?: string; // "a".."e"
+  ecoscore?: string; // "a".."e"
+  nova?: number; // 1..4 (nivel de procesamiento)
+  allergens?: string[]; // En español: "Leche", "Gluten"...
+  ingredients?: string;
+  quantityLabel?: string; // Presentación: "400 g", "1 L"
+  nutriments?: {
+    kcal?: number; // por 100 g/ml
+    sugars?: number;
+    salt?: number;
+    fat?: number;
+    proteins?: number;
+  };
+  fetchedAt: string; // ISO
+};
+
 export type PantryItem = {
   id: string;
   name: string;
@@ -60,6 +84,8 @@ export type PantryItem = {
    * hasta el próximo escaneo, con foto o a mano.
    */
   restockedAt?: string;
+  /** Ficha pública (Open Food Facts) traída por código de barras. Opcional y local. */
+  facts?: PublicFacts;
 };
 
 export type ScanHit = {

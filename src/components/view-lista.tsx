@@ -25,6 +25,7 @@ import type { ListLine, PantryItem } from "@/lib/types";
 import { shareViaWhatsApp } from "@/lib/whatsapp";
 import { TicketModal } from "@/components/ticket-modal";
 import { BarcodeModal } from "@/components/barcode-modal";
+import { StoresCard } from "@/components/stores-card";
 
 function LineCard({
   line,
@@ -515,6 +516,9 @@ export function Lista() {
           </Button>
         </div>
       </div>
+
+      {/* ¿Dónde compro? Súpers cercanos (OpenStreetMap, sin llave) */}
+      {!oneHandedMode && <StoresCard />}
 
       {current.lines.length === 0 && (
         <p className="text-sm text-stone">Agrega productos o escanéala para llenarla con lo que falta.</p>
