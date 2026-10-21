@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Camera, Check, Video } from "lucide-react";
+import { Camera, Check, Video, Star, Barcode } from "lucide-react";
 import { Button } from "@/components/ui";
 import { fileToJpeg, framesFromVideo } from "@/lib/images";
 import { diffPantry, surprises } from "@/lib/match";
 import { scanPantry } from "@/lib/scan.functions";
 import { blankList, lineFromItem, usePantry } from "@/lib/store";
-import { UNITS, type PantryItem, type ScanHit, type Unit } from "@/lib/types";
+import { UNITS, PACKAGE_TYPES, type PantryItem, type ScanHit, type Unit, type PackageType } from "@/lib/types";
 import type { Gap } from "@/lib/match";
+import { BarcodeModal } from "@/components/barcode-modal";
 
 const MAX_SHOTS = 4;
 
@@ -24,6 +25,7 @@ export function Escanear() {
   const [extra, setExtra] = useState<ScanHit[]>([]);
   const [seen, setSeen] = useState<Record<string, boolean>>({});
   const [pending, setPending] = useState<PantryItem[] | null>(null);
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
 
   async function addImages(list: FileList | null) {
     if (!list?.length) return;
@@ -96,11 +98,19 @@ export function Escanear() {
       toast("Con lo que marcaste, no falta nada.");
       return;
     }
+
+    // Imprescindible: sort essentials first!
+    const sortedMissing = [...missing].sort((a, b) => {
+      if (a.isEssential && !b.isEssential) return -1;
+      if (!a.isEssential && b.isEssential) return 1;
+      return 0;
+    });
+
     if (current && current.lines.length > 0) {
-      setPending(missing);
+      setPending(sortedMissing);
       return;
     }
-    commit(missing);
+    commit(sortedMissing);
   }
 
   function commit(missing: PantryItem[]) {
@@ -115,13 +125,48 @@ export function Escanear() {
     askOrOpen(missing);
   }
 
+  function handleBarcodeFound(product: {
+    name: string;
+    brand: string;
+    barcode: string;
+    category?: string;
+    packageType?: string;
+    unit?: string;
+    targetQty?: number;
+    usualPrice?: number;
+  }) {
+    upsertItem({
+      id: crypto.randomUUID(),
+      name: product.name,
+      brand: product.brand,
+      barcode: product.barcode,
+      category: product.category || "Abarrotes",
+      packageType: (product.packageType as PackageType) || "pieza",
+      unit: (product.unit as Unit) || "pza",
+      targetQty: product.targetQty || 1,
+      usualPrice: product.usualPrice || 0,
+      isEssential: false,
+    });
+    toast(`«${product.name}» agregado a la despensa desde código de barras.`);
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-display text-3xl">Escanear</h1>
-        <p className="mt-1 text-sm leading-relaxed text-stone">
-          Foto, varias fotos o un video corto. Se comprimen en tu teléfono y no se guardan.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl">Escanear</h1>
+          <p className="mt-1 text-sm leading-relaxed text-stone">
+            Fotos o video de tu alacena. Los productos imprescindibles irán primero en tu lista.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          className="size-12 shrink-0 px-0"
+          aria-label="Escanear código de barras de producto"
+          onClick={() => setBarcodeOpen(true)}
+        >
+          <Barcode className="size-5" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -179,10 +224,16 @@ export function Escanear() {
       {gaps && (
         <section className="rounded-3xl border border-line bg-card p-4">
           <p className="text-sm font-medium">Comparado con tu despensa</p>
+          <p className="mt-0.5 text-xs text-stone">
+            Los imprescindibles se acomodarán arriba en tu lista.
+          </p>
           <ul className="mt-3 flex flex-col gap-2">
             {gaps.map((gap) => (
               <li key={gap.item.id} className="flex items-center justify-between gap-3 text-sm">
-                <span>
+                <span className="flex items-center gap-1.5">
+                  {gap.item.isEssential && (
+                    <Star className="size-3.5 fill-clay text-clay" />
+                  )}
                   {gap.item.name}
                   {gap.item.brand ? <span className="text-stone"> · {gap.item.brand}</span> : null}
                 </span>
@@ -221,6 +272,7 @@ export function Escanear() {
                       category: "Otros",
                       targetQty: hit.quantity && hit.quantity > 0 ? hit.quantity : 1,
                       unit,
+                      packageType: "pieza",
                       usualPrice: 0,
                     });
                     toast("Agregado a tu despensa. Ponle precio cuando quieras.");
@@ -253,8 +305,9 @@ export function Escanear() {
                   onClick={() => setSeen({ ...seen, [item.id]: !on })}
                   className="flex h-12 w-full items-center justify-between rounded-2xl bg-card px-3 text-left text-sm transition-colors duration-150"
                 >
-                  <span>
-                    {item.name}
+                  <span className="flex items-center gap-1.5">
+                    {item.isEssential && <Star className="size-3 fill-clay text-clay" />}
+                    <span>{item.name}</span>
                     <span className="text-stone"> · {item.targetQty} {item.unit}</span>
                   </span>
                   <span
@@ -288,6 +341,13 @@ export function Escanear() {
           </div>
         </div>
       )}
+
+      <BarcodeModal
+        isOpen={barcodeOpen}
+        onClose={() => setBarcodeOpen(false)}
+        onFound={handleBarcodeFound}
+        title="Código de barras en el súper"
+      />
     </div>
   );
 }
