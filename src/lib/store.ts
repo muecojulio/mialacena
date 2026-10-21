@@ -138,7 +138,7 @@ export function lineFromItem(item: PantryItem, qty?: number): ListLine {
 export const usePantry = create<PantryState>()(
   persist(
     (set, get) => ({
-      theme: "dark",
+      theme: "light",
       view: "hoy",
       despensaTab: "catalogo",
       items: SEED,

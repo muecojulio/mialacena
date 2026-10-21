@@ -10,6 +10,8 @@ import { nitro } from "nitro/vite";
 import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
+// @ts-expect-error JS plugin alongside the TS vite config
+import { applyToNodeRes } from "./scripts/http-headers.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -143,6 +145,39 @@ function authPopupPlugin(): Plugin {
 }
 
 /**
+ * Encabezados de caché + seguridad también en `vite dev` (la vista previa vive
+ * aquí). Misma tabla que `server/middleware/00-headers.ts`, vía el módulo
+ * compartido, para que dev y producción respondan igual.
+ */
+function httpHeadersPlugin(): Plugin {
+  return {
+    name: "app-builder:http-headers",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        try {
+          const rawUrl = req.url ?? "/";
+          const pathOnly = rawUrl.split("?", 1)[0] ?? "/";
+          const xfProto = String(req.headers["x-forwarded-proto"] ?? "");
+          const isHttps = xfProto
+            ? xfProto.split(",")[0]!.trim() === "https"
+            : Boolean((req.socket as { encrypted?: boolean } | undefined)?.encrypted);
+          applyToNodeRes(res, {
+            pathname: pathOnly,
+            method: req.method ?? "GET",
+            isHttps,
+            isDev: true,
+          });
+        } catch (err) {
+          console.error("[app-builder] http-headers failed:", err);
+        }
+        next();
+      });
+    },
+  };
+}
+
+/**
  * Filter the 20 `MODULE_LEVEL_DIRECTIVE` warnings Rolldown emits for
  * @tanstack/react-router's `"use client"` directives. They are inert in this
  * app (no React Server Components), so the build log stays readable; any other
@@ -177,6 +212,7 @@ export default defineConfig(({ command, isPreview }) => ({
   },
   resolve: { tsconfigPaths: true },
   plugins: [
+    httpHeadersPlugin(),
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),

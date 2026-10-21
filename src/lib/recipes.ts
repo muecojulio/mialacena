@@ -12,7 +12,7 @@ import type { PantryItem, ScanReport } from "./types.ts";
  */
 
 /** Básicos de una despensa mexicana → ingrediente de TheMealDB. */
-export const INGREDIENT_EN: Record<string, string> = {
+const INGREDIENT_EN: Record<string, string> = {
   huevo: "egg",
   huevos: "egg",
   leche: "milk",
@@ -175,7 +175,7 @@ export function parseMealList(json: unknown): { id: string; title: string; thumb
 }
 
 /** Ingredientes de `lookup.php?i=` (strIngredient1..20). */
-export function mealIngredients(meal: Raw): string[] {
+function mealIngredients(meal: Raw): string[] {
   const out: string[] = [];
   for (let i = 1; i <= 20; i += 1) {
     const ingredient = asText(meal[`strIngredient${i}`], 60);

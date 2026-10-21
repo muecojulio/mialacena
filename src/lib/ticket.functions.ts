@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 
 type TicketInput = {
   image: string; // data:image/jpeg;base64,...
@@ -31,6 +32,8 @@ function asTicketInput(input: TicketInput): TicketInput {
 }
 
 export const scanTicketImage = createServerFn({ method: "POST" })
+  // OCR con IA: cara y con cuota — pocas por minuto.
+  .middleware([rateLimit("ticket", 8, 60_000)])
   .validator(asTicketInput)
   .handler(async ({ data }): Promise<TicketOk | TicketErr> => {
     const apiKey = process.env.XAI_API_KEY;

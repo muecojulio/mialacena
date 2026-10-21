@@ -41,14 +41,14 @@ export function HolidayNote() {
     <button
       type="button"
       onClick={() => setView("lista")}
-      className="rounded-3xl border border-line bg-card p-4 text-left transition-transform duration-150 ease-out active:scale-[0.98]"
+      className="card-pop card-sun p-4 text-left transition-transform duration-150 ease-out active:scale-[0.98]"
     >
       <span className="flex items-center justify-between gap-3">
         <span className="flex items-start gap-2.5">
-          <CalendarClock className="mt-0.5 size-4 shrink-0 text-clay" />
+          <span className="icon-blob icon-sun size-8 shrink-0"><CalendarClock className="size-4" /></span>
           <span>
             <span className="block text-sm font-semibold">
-              {holiday.name} es {when} ({shortCalendarDay(holiday.date)})
+              🎉 {holiday.name} es {when} ({shortCalendarDay(holiday.date)})
             </span>
             <span className="mt-0.5 block text-xs leading-relaxed text-stone">
               Los feriados llenan el súper y cambian horarios: vale la pena adelantar tu lista.

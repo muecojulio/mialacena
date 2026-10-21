@@ -14,8 +14,8 @@ import {
   type ShopList,
 } from "./types.ts";
 
-export const BACKUP_APP = "mialacena";
-export const BACKUP_KIND = "respaldo";
+const BACKUP_APP = "mialacena";
+const BACKUP_KIND = "respaldo";
 export const BACKUP_VERSION = 1;
 /** Un respaldo real pesa unos cuantos KB; el tope solo evita leer un archivo equivocado enorme. */
 export const BACKUP_MAX_BYTES = 5 * 1024 * 1024;

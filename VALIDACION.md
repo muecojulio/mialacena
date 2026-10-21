@@ -248,3 +248,88 @@ el suyo.
   (`Download failure`), así que no se repitió la navegación de punta a punta de las
   secciones 4 y 5. Lo anterior sigue vigente; lo nuevo se validó con pruebas, build y
   peticiones HTTP reales.
+
+## 7. Revisión de diseño, rendimiento y seguridad (21 de octubre de 2026)
+
+### Diseño: «mercado vivo» (sin minimalismo)
+
+- Nuevo sistema visual en `src/styles.css`: paleta ampliada (sol, cielo, agua, baya, uva,
+  lima además de clay/sage), tarjetas tipo sticker con borde y sombra de color
+  (`card-pop` + variantes), botones con cuerpo (`btn-chunky`), héroe con degradado y
+  confeti, chips de categoría con color por anaquel (`src/lib/colors.ts`), y animaciones
+  suaves (rise, pop-in, wiggle, brillo en barras de progreso) que respetan
+  `prefers-reduced-motion`.
+- Encabezado y navegación con acentos por pestaña, botón de escaneo elevado y avisos
+  tipo toast con color. La vista Hoy tiene saludo del día, héroe y mosaico de cifras.
+- El tema por defecto es el claro (soleado); el oscuro sigue en el interruptor y se
+  respeta lo que cada quien haya elegido antes.
+- Verificado con capturas reales (Chromium headless) en 390×844: Hoy, Despensa, Lista,
+  Privacidad y tema oscuro. (Playwright no descarga su Chromium en este entorno; se usó
+  el binario de `@sparticuz/chromium`, sin guardar en el proyecto.)
+
+### Base de datos: ¿conviene indexar?
+
+- **Los datos de la app no están en SQL** (despensa, listas y precios viven en
+  `localStorage`), así que no hay tablas propias que indexar. Lo único en la base es el
+  esquema de identidad de `migrations/auth/0001_auth.sql` (opt-in).
+- Sí faltaban índices que Better Auth sí usa: `account (providerId, accountId)` para el
+  inicio de sesión federado y `session`/`verification (expiresAt)` para la limpieza de
+  vencidos. Se agregaron en **`migrations/0002_auth_indexes.sql`**, con guarda
+  `to_regclass` para que sea no-op donde el esquema de auth no exista (probado contra
+  PGLite en ambos casos y re-ejecutable). El orden 0001 → 0002 cubre el día en que el
+  esquema se copie a `migrations/`.
+- `scripts/migration-plan.test.mjs` se ajustó para seguir exigiendo lo importante (que
+  `0001_auth.sql` nunca se promueva solo) sin prohibir migraciones propias de la app.
+
+### Caché
+
+- Política HTTP compartida (`scripts/http-headers.mjs`) aplicada en dev (plugin de Vite),
+  en Nitro/Vercel (`server/middleware/00-headers.ts`) y en las respuestas fabricadas del
+  middleware PWA: assets con hash → `immutable` 1 año; íconos/manifest → 1 hora; HTML →
+  `no-cache` (revalida con ETag); `/api/auth/*` y lo que no es GET → `no-store`.
+- Las consultas a APIs públicas ya tenían caché TTL en servidor (`ttlCache` y el caché de
+  catálogo); se mantienen.
+
+### Seguridad (habilidades activas)
+
+- **CSP estricta** con lo que la app usa de verdad: `img-src` incluye `data:/blob:` (fotos
+  locales), `connect-src https:` (APIs públicas y HMR en dev), `worker-src blob:`
+  (Tesseract/ZXing), `frame-ancestors` con los orígenes de la vista previa (sin
+  `X-Frame-Options`, que no puede expresar esa lista y rompería el iframe). Además:
+  `nosniff`, `referrer-policy`, `permissions-policy` (solo cámara y ubicación de esta
+  página), HSTS sobre https, `base-uri`, `form-action`, `object-src 'none'`.
+- **Límite de frecuencia** por IP en las funciones del servidor que hacen de proxy
+  (`src/lib/rate-limit.ts` + `.server.ts`), con techo más bajo en las llamadas con IA
+  (`scan`/`ticket`, 8/min). El conteo se poda solo y no guarda datos personales.
+- Timeout de 8 s en la búsqueda de catálogo (un upstream colgado ya no retiene procesos).
+- `rel="noopener noreferrer"` explícito en todos los `target="_blank"`.
+- **Vulnerabilidades:** `npm audit` → 0 advisories en dependencias. Revisión de código:
+  sin `innerHTML` con datos del usuario, validadores (zod/manual) en todas las funciones
+  del servidor, URLs de APIs públicas construidas con `URL`/`encodeURIComponent`, y el
+  aislamiento `Sec-Fetch-Site` de auth sigue intacto.
+
+### Código muerto
+
+- Eliminado `src/lib/multiplayer/` (P2P de la plantilla, sin ningún importador).
+- Eliminada `gradeLabel` (`src/lib/off.ts`, sin uso) y des-exportados símbolos que solo se
+  usan dentro de su módulo (`BACKUP_APP`, `BACKUP_KIND`, `STYLES_XML`, `xlsxBlob`,
+  `OFF_FIELDS`, `normalizeUnitFamily`, `formatUnitWord`, `INGREDIENT_EN`,
+  `mealIngredients`). El andamiaje de plataforma (auth/, app-data/, preview-*) se respeta.
+
+### Políticas de privacidad (pestaña propia)
+
+- `/privacidad` reescrita como **Aviso de privacidad** completo y con el diseño nuevo:
+  qué se guarda y qué no, respaldo, fotos/video, servicios públicos con lo mínimo que
+  recibe cada uno, cookies/almacenamiento local, seguridad, derechos ARCO, cambios al
+  aviso, contacto y «Borrar este teléfono». Accesible desde el encabezado (escudo) y
+  desde Hoy.
+
+### Cómo se comprobó
+
+- `npm run typecheck`, `npm run lint`, `npm test` (305 pruebas, 0 fallos) y `npm run build`
+  en verde; el bundle de producción incluye el middleware de encabezados y la migración
+  se aplica tanto en PGLite (dev/preview) como en `npm run db:migrate` (deploy).
+- `curl` al dev server: HTML con CSP completa y `no-cache`; `/favicon.svg` con
+  `public, max-age=3600`; POST sin caché.
+- Capturas headless de Hoy/Despensa/Lista/Privacidad en claro y oscuro, sin errores de
+  consola bloqueantes.

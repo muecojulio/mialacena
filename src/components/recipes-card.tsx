@@ -78,11 +78,13 @@ export function RecipesCard() {
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-card p-5" aria-label="Cocina con tu despensa">
+    <section className="card-pop p-5" aria-label="Cocina con tu despensa">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-medium">
-            <ChefHat className="size-4 text-clay" />
+          <p className="section-title text-sm">
+            <span className="icon-blob icon-clay size-8">
+              <ChefHat className="size-4" />
+            </span>
             Cocina con tu despensa
           </p>
           <p className="mt-0.5 text-xs leading-relaxed text-stone">
@@ -160,7 +162,7 @@ export function RecipesCard() {
                 <a
                   href={recipe.sourceUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-card px-3 text-xs font-semibold text-ink transition-transform active:scale-[0.96]"
                 >
                   <ExternalLink className="size-3.5" />

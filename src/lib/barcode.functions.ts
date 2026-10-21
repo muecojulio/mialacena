@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 import { COMMON_BARCODES } from "./barcode-db.ts";
 import { offProductUrl, parseOffProduct } from "./off.ts";
 import { fetchJson } from "./public-fetch.ts";
@@ -23,6 +24,7 @@ type BarcodeOk = { ok: true; product: BarcodeHit };
 type BarcodeErr = { ok: false; error: string; fallbackCode?: string };
 
 export const lookupBarcode = createServerFn({ method: "POST" })
+  .middleware([rateLimit("barcode", 30, 60_000)])
   .validator((input: { barcode: string }) => {
     const code = String(input?.barcode ?? "").trim().replace(/\D/g, "");
     if (code.length < 5) throw new Error("Código de barras inválido");

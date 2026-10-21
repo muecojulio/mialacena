@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 import { fetchJson, ttlCache } from "./public-fetch.ts";
 import {
   parseMealList,
@@ -46,6 +47,7 @@ function pantryRows(data: SuggestInput): PantryIngredient[] {
 }
 
 export const suggestRecipes = createServerFn({ method: "POST" })
+  .middleware([rateLimit("recipes", 12, 60_000)])
   .validator(asSuggestInput)
   .handler(async ({ data }): Promise<SuggestOk | SuggestErr> => {
     const key = `${data.ingredient}|${[...data.pantryEn].sort().join(",")}`;

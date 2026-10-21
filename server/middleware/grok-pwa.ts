@@ -24,10 +24,17 @@ import {
   renderInstallPageHtml,
   renderWebManifest,
 } from "../../scripts/grok-pwa-shared.mjs";
+import { applyToResponse } from "../../scripts/http-headers.mjs";
 
 interface GrokPwaEvent {
   url: URL;
   req: { method: string; headers: Headers };
+}
+
+function isHttpsEvent(event: GrokPwaEvent): boolean {
+  const proto = event.req.headers.get("x-forwarded-proto");
+  if (proto) return proto.split(",")[0]!.trim() === "https";
+  return false;
 }
 
 function requestHost(event: GrokPwaEvent): string {
@@ -71,12 +78,15 @@ export default async function grokPwaMiddleware(
   const urlWithQuery = path + event.url.search;
 
   if (path === "/__grok/manifest.webmanifest" || path === "/__grok/manifest.json") {
-    return new Response(renderWebManifest(requestHost(event), grokOgIdentity.site), {
-      headers: {
-        "content-type": "application/manifest+json; charset=utf-8",
-        "cache-control": "no-cache",
-      },
-    });
+    return applyToResponse(
+      new Response(renderWebManifest(requestHost(event), grokOgIdentity.site), {
+        headers: {
+          "content-type": "application/manifest+json; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      }),
+      { pathname: path, method, isHttps: isHttpsEvent(event), isDev: false },
+    );
   }
 
   if (
@@ -89,12 +99,12 @@ export default async function grokPwaMiddleware(
       url: urlWithQuery,
       site: grokOgIdentity.site,
     });
-    return new Response(html, {
+    return applyToResponse(new Response(html, {
       headers: {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-cache",
       },
-    });
+    }), { pathname: path, method, isHttps: isHttpsEvent(event), isDev: false });
   }
 
   if (!isDocumentPath(path)) return next();

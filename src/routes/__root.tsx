@@ -5,7 +5,7 @@ import appCss from "../styles.css?url";
 
 const APP_NAME = "mialacena";
 
-const THEME_BOOT = `(function(){try{var raw=localStorage.getItem("mialacena");var theme=raw&&JSON.parse(raw).state&&JSON.parse(raw).state.theme;var dark=theme?theme!=="light":true;document.documentElement.classList.toggle("dark",dark);}catch(e){}})();`;
+const THEME_BOOT = `(function(){try{var raw=localStorage.getItem("mialacena");var theme=raw&&JSON.parse(raw).state&&JSON.parse(raw).state.theme;var dark=theme?theme!=="light":false;document.documentElement.classList.toggle("dark",dark);}catch(e){}})();`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -31,7 +31,7 @@ export const Route = createRootRoute({
     ],
   }),
   component: () => (
-    <html lang="es" className="dark" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />

@@ -2,35 +2,76 @@
 @import "@fontsource/outfit/400.css";
 @import "@fontsource/outfit/500.css";
 @import "@fontsource/outfit/600.css";
+@import "@fontsource/outfit/700.css";
 @import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/700.css";
 
+/*
+ * mialacena — «mercado vivo»: papel cálido, tinta gruesa, colores de puesto de
+ * mercado y stickers. Nada de minimalismo gris: cada superficie tiene color,
+ * sombra y un poco de movimiento (con `prefers-reduced-motion` respetado).
+ */
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --color-paper: #f3efe6;
-  --color-ink: #1c1915;
-  --color-clay: #c4622d;
-  --color-clay-ink: #fff8f3;
-  --color-sage: #3f6b4e;
-  --color-sage-ink: #f4f7f2;
-  --color-stone: #6f695f;
-  --color-line: #e4dccf;
+
+  /* Base */
+  --color-paper: #fff3e0;
+  --color-ink: #241812;
+  --color-stone: #8a6f58;
+  --color-line: #f0d7b8;
   --color-card: #fffdf8;
-  --color-soft: #ebe4d6;
-  --radius-card: 1.25rem;
+  --color-soft: #ffe8cd;
+
+  /* Marca */
+  --color-clay: #f4511e;
+  --color-clay-ink: #fff8f3;
+  --color-sage: #1f9d63;
+  --color-sage-ink: #f2fff8;
+
+  /* Acentos de mercado */
+  --color-sun: #ffc12e;
+  --color-sun-ink: #4a3200;
+  --color-sky: #2f92f2;
+  --color-sky-ink: #04203f;
+  --color-aqua: #12b5a2;
+  --color-aqua-ink: #012e28;
+  --color-berry: #e23d8b;
+  --color-berry-ink: #42041f;
+  --color-grape: #7b52e0;
+  --color-grape-ink: #1b0b40;
+  --color-lime: #77bd2c;
+  --color-lime-ink: #1c3205;
+
+  --radius-card: 1.35rem;
 }
 
 .dark {
-  --color-paper: #12110f;
-  --color-ink: #f4efe6;
-  --color-clay: #e08a4f;
-  --color-clay-ink: #1c120c;
-  --color-sage: #8eae84;
-  --color-sage-ink: #121810;
-  --color-stone: #a39c91;
-  --color-line: #34302a;
-  --color-card: #1c1a16;
-  --color-soft: #26231e;
+  --color-paper: #17110c;
+  --color-ink: #fdeedd;
+  --color-stone: #bfa894;
+  --color-line: #3c2c20;
+  --color-card: #241b13;
+  --color-soft: #322517;
+
+  --color-clay: #ff7a45;
+  --color-clay-ink: #2b1002;
+  --color-sage: #45c98a;
+  --color-sage-ink: #042316;
+
+  --color-sun: #ffd166;
+  --color-sun-ink: #3d2a00;
+  --color-sky: #67b4ff;
+  --color-sky-ink: #062342;
+  --color-aqua: #3edbc7;
+  --color-aqua-ink: #032b25;
+  --color-berry: #ff6fae;
+  --color-berry-ink: #450722;
+  --color-grape: #a48aff;
+  --color-grape-ink: #20104d;
+  --color-lime: #9fdb52;
+  --color-lime-ink: #1d3306;
+
   color-scheme: dark;
 }
 
@@ -45,7 +86,14 @@ html.dark {
 @layer base {
   html,
   body {
-    background: var(--color-paper);
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(circle at 12% 8%, color-mix(in oklab, var(--color-sun) 22%, transparent) 0, transparent 34%),
+      radial-gradient(circle at 88% 18%, color-mix(in oklab, var(--color-sky) 16%, transparent) 0, transparent 30%),
+      radial-gradient(circle at 20% 92%, color-mix(in oklab, var(--color-berry) 12%, transparent) 0, transparent 32%),
+      radial-gradient(color-mix(in oklab, var(--color-ink) 7%, transparent) 1px, transparent 1.6px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 22px 22px;
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
   }
@@ -60,7 +108,7 @@ html.dark {
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid var(--color-clay);
+    outline: 3px solid var(--color-grape);
     outline-offset: 2px;
   }
 
@@ -68,6 +116,10 @@ html.dark {
   select,
   textarea {
     font: inherit;
+  }
+
+  strong {
+    font-weight: 600;
   }
 }
 
@@ -80,14 +132,217 @@ html.dark {
 }
 
 .lift {
-  box-shadow: 0 16px 40px color-mix(in oklab, var(--color-ink) 14%, transparent);
+  box-shadow: 0 18px 44px color-mix(in oklab, var(--color-ink) 18%, transparent);
 }
 
-/*
- * `backwards`, no `both`: al terminar no debe quedarse con filter/transform aplicados, porque
- * eso convierte a la vista en el ancla de los `position: fixed` y las hojas de confirmación
- * (finalizar, cargar respaldo…) se iban al final del contenido en vez de abajo de la pantalla.
- */
+/* ---------- Superficies tipo sticker ---------- */
+
+.card-pop {
+  border-radius: var(--radius-card);
+  border: 1.5px solid color-mix(in oklab, var(--color-line) 90%, var(--color-ink));
+  background: var(--color-card);
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-clay) 14%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-ink) 40%, transparent);
+}
+
+.card-sun {
+  border-color: color-mix(in oklab, var(--color-sun) 55%, var(--color-line));
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-sun) 45%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-sun) 55%, transparent);
+}
+
+.card-sky {
+  border-color: color-mix(in oklab, var(--color-sky) 45%, var(--color-line));
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-sky) 35%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-sky) 55%, transparent);
+}
+
+.card-sage {
+  border-color: color-mix(in oklab, var(--color-sage) 45%, var(--color-line));
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-sage) 35%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-sage) 55%, transparent);
+}
+
+.card-berry {
+  border-color: color-mix(in oklab, var(--color-berry) 40%, var(--color-line));
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-berry) 30%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-berry) 55%, transparent);
+}
+
+.card-grape {
+  border-color: color-mix(in oklab, var(--color-grape) 40%, var(--color-line));
+  box-shadow:
+    0 2px 0 color-mix(in oklab, var(--color-grape) 30%, transparent),
+    0 14px 30px -18px color-mix(in oklab, var(--color-grape) 55%, transparent);
+}
+
+/* Etiquetas pegadas con ángulo, como en el puesto */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transform: rotate(-1.5deg);
+  border: 1.5px solid color-mix(in oklab, var(--color-ink) 16%, transparent);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.sticker-sun {
+  background: var(--color-sun);
+  color: var(--color-sun-ink);
+}
+
+.sticker-sage {
+  background: var(--color-sage);
+  color: var(--color-sage-ink);
+}
+
+.sticker-clay {
+  background: var(--color-clay);
+  color: var(--color-clay-ink);
+}
+
+.sticker-berry {
+  background: var(--color-berry);
+  color: var(--color-berry-ink);
+}
+
+.sticker-sky {
+  background: var(--color-sky);
+  color: var(--color-sky-ink);
+}
+
+.sticker-grape {
+  background: var(--color-grape);
+  color: var(--color-grape-ink);
+}
+
+/* ---------- Héroe y degradados ---------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.6rem;
+  color: #fffdf8;
+  background:
+    linear-gradient(128deg, var(--color-clay) 0%, #ff7a2f 46%, var(--color-sun) 100%);
+  box-shadow:
+    0 3px 0 color-mix(in oklab, var(--color-clay) 55%, transparent),
+    0 22px 44px -20px color-mix(in oklab, var(--color-clay) 75%, transparent);
+}
+
+.hero-ink {
+  /* El degradado del héroe siempre es cálido/claro: el texto va en crema,
+     incluso en tema oscuro (nunca heredar --color-clay-ink, que se invierte). */
+  color: #fffdf8;
+  text-shadow: 0 1px 2px rgb(60 20 0 / 0.18);
+}
+
+.hero::before,
+.hero::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  pointer-events: none;
+}
+
+.hero::before {
+  width: 11rem;
+  height: 11rem;
+  top: -5.5rem;
+  right: -3rem;
+}
+
+.hero::after {
+  width: 7rem;
+  height: 7rem;
+  bottom: -3.5rem;
+  left: 18%;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.grad-meadow {
+  background: linear-gradient(128deg, var(--color-sage), var(--color-lime));
+  color: var(--color-sage-ink);
+}
+
+.grad-ocean {
+  background: linear-gradient(128deg, var(--color-sky), var(--color-aqua));
+  color: var(--color-sky-ink);
+}
+
+.grad-berry {
+  background: linear-gradient(128deg, var(--color-berry), var(--color-grape));
+  color: var(--color-berry-ink);
+}
+
+.grad-night {
+  background: linear-gradient(128deg, var(--color-grape), var(--color-sky));
+  color: var(--color-grape-ink);
+}
+
+/* ---------- Botones con cuerpo ---------- */
+
+.btn-chunky {
+  position: relative;
+  border-radius: 1.05rem;
+  border: 1.5px solid color-mix(in oklab, var(--color-ink) 18%, transparent);
+  box-shadow: 0 3px 0 color-mix(in oklab, var(--color-ink) 22%, transparent);
+  transition:
+    transform 140ms ease-out,
+    box-shadow 140ms ease-out,
+    background-color 160ms ease-out;
+}
+
+.btn-chunky:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 color-mix(in oklab, var(--color-ink) 24%, transparent);
+}
+
+.btn-chunky:active:not(:disabled) {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 22%, transparent);
+}
+
+.btn-chunky:disabled {
+  filter: saturate(0.25);
+}
+
+/* ---------- Barra de progreso con brillo ---------- */
+
+.progress-sky {
+  background: linear-gradient(90deg, var(--color-sky), var(--color-aqua), var(--color-lime));
+  background-size: 200% 100%;
+  animation: slide-shine 3.2s linear infinite;
+}
+
+.progress-clay {
+  background: linear-gradient(90deg, var(--color-clay), var(--color-sun));
+  background-size: 200% 100%;
+  animation: slide-shine 3.2s linear infinite;
+}
+
+@keyframes slide-shine {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------- Movimiento alegre ---------- */
+
 .rise {
   animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
@@ -95,7 +350,7 @@ html.dark {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px) scale(0.98);
     filter: blur(4px);
   }
   to {
@@ -105,8 +360,221 @@ html.dark {
   }
 }
 
+.pop-in {
+  animation: pop-in 320ms cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wiggle {
+  animation: wiggle 3.6s ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2.2deg) scale(1.03);
+  }
+}
+
+.float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(1.5deg);
+  }
+}
+
+.blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(2px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: float-slow 9s ease-in-out infinite;
+}
+
+/* Confeti de puntos para portadas y avisos */
+.confetti {
+  background-image:
+    radial-gradient(circle at 12% 22%, var(--color-sun) 0 5px, transparent 6px),
+    radial-gradient(circle at 78% 18%, var(--color-sky) 0 4px, transparent 5px),
+    radial-gradient(circle at 32% 78%, var(--color-berry) 0 4.5px, transparent 5.5px),
+    radial-gradient(circle at 88% 70%, var(--color-lime) 0 4px, transparent 5px),
+    radial-gradient(circle at 56% 44%, var(--color-grape) 0 3.5px, transparent 4.5px);
+  background-repeat: no-repeat;
+}
+
+/* Sobre el héroe, el confeti se apila ENCIMA del degradado (background-image
+   comparte capa: sin esta regla los puntos reemplazan el gradiente y el héroe
+   queda transparente). */
+.hero.confetti {
+  background-image:
+    radial-gradient(circle at 12% 22%, rgb(255 255 255 / 0.5) 0 5px, transparent 6px),
+    radial-gradient(circle at 78% 18%, rgb(255 255 255 / 0.4) 0 4px, transparent 5px),
+    radial-gradient(circle at 32% 78%, rgb(255 255 255 / 0.45) 0 4.5px, transparent 5.5px),
+    radial-gradient(circle at 88% 70%, rgb(255 255 255 / 0.4) 0 4px, transparent 5px),
+    radial-gradient(circle at 56% 44%, rgb(255 255 255 / 0.35) 0 3.5px, transparent 4.5px),
+    linear-gradient(128deg, var(--color-clay) 0%, #ff7a2f 46%, var(--color-sun) 100%);
+  background-repeat: no-repeat;
+}
+
+/* Aviso emergente (toast) */
+.toast-pop {
+  border-radius: 1.15rem;
+  border: 1.5px solid color-mix(in oklab, var(--color-sage) 55%, transparent);
+  background: linear-gradient(120deg, var(--color-sage), var(--color-aqua));
+  color: var(--color-sage-ink);
+  box-shadow: 0 16px 36px -14px color-mix(in oklab, var(--color-sage) 80%, transparent);
+  animation: toast-in 360ms cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Pastilla activa del navegador inferior */
+.nav-pill {
+  transition:
+    background-color 180ms ease-out,
+    color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.nav-pill-active {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.scan-fab {
+  background: linear-gradient(140deg, var(--color-clay), var(--color-sun));
+  color: var(--color-clay-ink);
+  border: 2.5px solid var(--color-card);
+  box-shadow:
+    0 4px 0 color-mix(in oklab, var(--color-clay) 55%, transparent),
+    0 14px 26px -10px color-mix(in oklab, var(--color-clay) 80%, transparent);
+}
+
+/* Salpicadura de color detrás de los íconos de sección */
+.icon-blob {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.95rem;
+  border: 1.5px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+.icon-sun {
+  background: color-mix(in oklab, var(--color-sun) 32%, var(--color-card));
+  color: color-mix(in oklab, var(--color-sun-ink) 80%, var(--color-ink));
+}
+
+.icon-clay {
+  background: color-mix(in oklab, var(--color-clay) 22%, var(--color-card));
+  color: var(--color-clay);
+}
+
+.icon-sage {
+  background: color-mix(in oklab, var(--color-sage) 20%, var(--color-card));
+  color: var(--color-sage);
+}
+
+.icon-sky {
+  background: color-mix(in oklab, var(--color-sky) 20%, var(--color-card));
+  color: var(--color-sky);
+}
+
+.icon-berry {
+  background: color-mix(in oklab, var(--color-berry) 18%, var(--color-card));
+  color: var(--color-berry);
+}
+
+.icon-grape {
+  background: color-mix(in oklab, var(--color-grape) 18%, var(--color-card));
+  color: var(--color-grape);
+}
+
+.icon-aqua {
+  background: color-mix(in oklab, var(--color-aqua) 22%, var(--color-card));
+  color: color-mix(in oklab, var(--color-aqua) 70%, var(--color-ink));
+}
+
+/* Chips de categoría (color por anaquel) */
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1.5px solid transparent;
+  transition: transform 140ms ease-out;
+}
+
+.cat-chip:active {
+  transform: scale(0.96);
+}
+
+/* Encabezado de sección con regla de color */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 600;
+}
+
+/* Marcador de cantidad con colores de mercado */
+.qty-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  border-radius: 0.8rem;
+  padding: 0.15rem 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  border: 1.5px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rise {
+  .rise,
+  .pop-in,
+  .wiggle,
+  .float-slow,
+  .blob,
+  .toast-pop,
+  .progress-sky,
+  .progress-clay {
     animation: none;
+  }
+
+  .btn-chunky:hover:not(:disabled) {
+    transform: none;
   }
 }

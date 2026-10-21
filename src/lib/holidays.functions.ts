@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "./rate-limit.ts";
 import { fetchJson, ttlCache } from "./public-fetch.ts";
 
 /**
@@ -11,7 +12,9 @@ export type Holiday = { date: string; name: string };
 
 const cache = ttlCache<Holiday[]>(24 * 60 * 60 * 1000, 1);
 
-export const nextHolidays = createServerFn({ method: "POST" }).handler(
+export const nextHolidays = createServerFn({ method: "POST" })
+  .middleware([rateLimit("holidays", 12, 60_000)])
+  .handler(
   async (): Promise<{ ok: boolean; holidays: Holiday[] }> => {
     const hit = cache.get("MX");
     if (hit) return { ok: true, holidays: hit };

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { rateLimit } from "@/lib/rate-limit";
 import type { ScanHit } from "@/lib/types";
 
 type ScanInput = {
@@ -76,6 +77,8 @@ function parseHits(raw: string): { items: ScanHit[]; note: string } {
 }
 
 export const scanPantry = createServerFn({ method: "POST" })
+  // Lectura con IA: cara y con cuota — pocas por minuto.
+  .middleware([rateLimit("scan", 8, 60_000)])
   .validator(asScanInput)
   .handler(async ({ data }): Promise<ScanOk | ScanErr> => {
     const apiKey = process.env.XAI_API_KEY;
