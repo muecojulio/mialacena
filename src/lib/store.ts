@@ -24,6 +24,7 @@ type PantryState = {
   addLine: (line: Omit<ListLine, "id" | "inCart"> & { inCart?: boolean }) => void;
   removeLine: (id: string) => void;
   saveSnapshot: () => void;
+  renameCurrent: (title: string) => void;
   finishList: () => void;
   startNew: (source?: ShopList["source"]) => void;
   reuseSaved: (id: string) => void;
@@ -49,6 +50,30 @@ export function blankList(source: ShopList["source"], title?: string): ShopList 
     source,
     lines: [],
   };
+}
+
+const DEFAULT_TITLES = new Set(["Faltantes del escaneo", "Lista de compra"]);
+
+/**
+ * «Guardadas» is unusable if every row reads the same, so an untouched default
+ * title — or a name already taken — gets the date attached on save.
+ */
+function savedTitle(title: string, taken: string[]): string {
+  const clean = title.trim() || "Lista de compra";
+  const stamp = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date());
+  if (!DEFAULT_TITLES.has(clean) && !taken.includes(clean)) return clean;
+  let candidate = `${clean} · ${stamp}`;
+  let n = 2;
+  while (taken.includes(candidate)) {
+    candidate = `${clean} · ${stamp} (${n})`;
+    n += 1;
+  }
+  return candidate;
 }
 
 export function lineFromItem(item: PantryItem, qty = item.targetQty): ListLine {
@@ -137,23 +162,34 @@ export const usePantry = create<PantryState>()(
         const copy: ShopList = {
           ...current,
           id: crypto.randomUUID(),
+          title: savedTitle(current.title, get().saved.map((row) => row.title)),
           status: "saved",
           updatedAt: nowIso(),
           lines: current.lines.map((line) => ({ ...line })),
         };
         set((state) => ({
           saved: [copy, ...state.saved].slice(0, 40),
-          notice: { id: Date.now(), text: "Lista guardada en este teléfono." },
+          notice: { id: Date.now(), text: `Guardada como «${copy.title}».` },
         }));
       },
+      renameCurrent: (title) =>
+        set((state) => ({
+          current: state.current
+            ? { ...state.current, title: title.trim() || "Lista de compra", updatedAt: nowIso() }
+            : state.current,
+        })),
       finishList: () => {
         const current = get().current;
         if (!current || current.lines.length === 0) {
           set({ notice: { id: Date.now(), text: "No hay una compra por cerrar." } });
           return;
         }
+        const taken = get()
+          .saved.filter((row) => row.id !== current.id)
+          .map((row) => row.title);
         const done: ShopList = {
           ...current,
+          title: savedTitle(current.title, taken),
           status: "finished",
           finishedAt: nowIso(),
           updatedAt: nowIso(),

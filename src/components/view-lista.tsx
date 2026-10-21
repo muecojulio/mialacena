@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button, TextField } from "@/components/ui";
 import { downloadExcel } from "@/lib/excel";
 import { lineAmount, mxn, parseMoney, parseQty } from "@/lib/money";
@@ -112,12 +112,19 @@ export function Lista() {
   const addLine = usePantry((state) => state.addLine);
   const saveSnapshot = usePantry((state) => state.saveSnapshot);
   const finishList = usePantry((state) => state.finishList);
+  const renameCurrent = usePantry((state) => state.renameCurrent);
   const startNew = usePantry((state) => state.startNew);
   const setView = usePantry((state) => state.setView);
   const [name, setName] = useState("");
+  const [title, setTitle] = useState(current?.title ?? "");
   const [price, setPrice] = useState("");
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
+
+  // Re-sync when another list takes the slot (repeat / new / finish).
+  useEffect(() => {
+    setTitle(current?.title ?? "");
+  }, [current?.id, current?.title]);
 
   if (!current) {
     return (
@@ -143,7 +150,21 @@ export function Lista() {
   return (
     <div className="flex flex-col gap-4">
       <div className="sticky top-16 z-10 -mx-5 bg-paper px-5 pb-3">
-        <p className="text-sm text-stone">{current.title}</p>
+        <div className="flex items-center gap-2">
+          <Pencil className="size-3.5 shrink-0 text-stone" aria-hidden="true" />
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Nombre de la lista</span>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onBlur={() => renameCurrent(title)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+              className="w-full truncate rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm text-stone focus:border-line focus:bg-card"
+            />
+          </label>
+        </div>
         <p className="font-display text-4xl">{mxn(total)}</p>
         <p className="mt-1 text-sm text-stone">
           En el carrito {mxn(carried)} · {taken} de {current.lines.length}

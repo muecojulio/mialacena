@@ -77,6 +77,7 @@ export function Shell() {
                 key={item.id}
                 type="button"
                 onClick={() => setView(item.id)}
+                aria-label={item.id === "lista" && pending > 0 ? `${item.label}, ${pending} en la lista` : item.label}
                 className={cn(
                   "flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors duration-150",
                   active ? "text-clay" : "text-stone",
