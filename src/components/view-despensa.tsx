@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Barcode, ShoppingCart, Calendar, Star, Sparkles } from "lucide-react";
+import { Plus, Trash2, Barcode, ShoppingCart, Calendar, Star, Sparkles, PackageCheck } from "lucide-react";
 import { Button, SelectField, TextField } from "@/components/ui";
 import { searchProducts } from "@/lib/catalog.functions";
+import { shortDay } from "@/lib/dates";
 import { mxn } from "@/lib/money";
 import { SEED } from "@/lib/seed";
 import { usePantry } from "@/lib/store";
@@ -201,6 +202,14 @@ export function Despensa() {
                   {item.expiresAt && (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-soft px-2 py-1 text-stone">
                       <Calendar className="size-3" /> Vence: {item.expiresAt}
+                    </span>
+                  )}
+                  {item.restockedAt && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-lg bg-sage/15 px-2 py-1 font-medium text-sage"
+                      title="Lo trajiste en una compra finalizada: cuenta como en casa hasta el próximo escaneo."
+                    >
+                      <PackageCheck className="size-3" aria-hidden="true" /> Repuesto · {shortDay(item.restockedAt)}
                     </span>
                   )}
                 </div>

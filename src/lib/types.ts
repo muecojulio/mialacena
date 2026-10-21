@@ -30,6 +30,11 @@ export type PantryItem = {
   isEssential?: boolean; // "Imprescindible" - no puede faltar
   barcode?: string;
   expiresAt?: string; // YYYY-MM-DD
+  /**
+   * ISO. Se marcó como «ya lo llevo» en una compra finalizada: cuenta como repuesto (en casa)
+   * hasta el próximo escaneo, con foto o a mano.
+   */
+  restockedAt?: string;
 };
 
 export type ScanHit = {
@@ -47,6 +52,8 @@ export type ScanReport = {
   hits: ScanHit[];
   present: number;
   missing: number;
+  /** Productos de la despensa que faltaban (o estaban bajos) en esa lectura. */
+  missingIds?: string[];
 };
 
 export type ListLine = {

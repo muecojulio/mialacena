@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Shield, Smartphone, AlertTriangle, Clock, ShoppingCart, Star } from "lucide-react";
+import { ChevronRight, Shield, Smartphone, Clock, PackageCheck, ShoppingCart, Star } from "lucide-react";
+import { BackupCard } from "@/components/backup-card";
 import { Button } from "@/components/ui";
-import { lineAmount, mxn, stamp } from "@/lib/money";
+import { cn } from "@/lib/cn";
+import { dayKey, expiresSoon, isExpired, shortDay } from "@/lib/dates";
+import { lineAmount, mxn, plural, stamp } from "@/lib/money";
+import { homeSummary, type HomeSummary } from "@/lib/restock";
 import { usePantry, lineFromItem } from "@/lib/store";
 
 function installApp() {
@@ -11,6 +15,16 @@ function installApp() {
   url.searchParams.set("install", "1");
   url.searchParams.set("platform", ios ? "ios" : "android");
   window.location.assign(url.toString());
+}
+
+/** «Ya en casa: 5 productos de tu compra del 21 oct. Cuentan como repuestos hasta el próximo escaneo.» */
+function restockNote({ restocked, since, until }: HomeSummary): string {
+  const sameDay = since && until && dayKey(new Date(since)) === dayKey(new Date(until));
+  const from = sameDay
+    ? `de tu compra del ${shortDay(until)}`
+    : `de tus compras desde el ${shortDay(since ?? "")}`;
+  const counts = restocked === 1 ? "Cuenta como repuesto" : "Cuentan como repuestos";
+  return `Ya en casa: ${plural(restocked, "producto", "productos")} ${from}. ${counts} hasta el próximo escaneo.`;
 }
 
 export function Hoy() {
@@ -30,16 +44,17 @@ export function Hoy() {
   const total = current?.lines.reduce((sum, line) => sum + lineAmount(line.qty, line.unitPrice), 0) ?? 0;
   const carried = current?.lines.filter((line) => line.inCart).length ?? 0;
 
-  // Calculate upcoming expirations
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Calculate upcoming expirations (día local, igual que el campo de fecha)
+  const todayStr = dayKey();
 
   // Expiring soon: expires within the next 7 days, or already expired
   const expiringSoon = items.filter((item) => {
     if (!item.expiresAt) return false;
-    return item.expiresAt <= sevenDaysLater;
+    return expiresSoon(item.expiresAt, todayStr);
   }).sort((a, b) => (a.expiresAt! > b.expiresAt! ? 1 : -1));
+
+  // Última lectura, contando lo que ya se trajo de la compra (repuestos)
+  const home = homeSummary(items, lastScan);
 
   function handleSendExpiredToBuy(item: typeof items[0]) {
     addLine(lineFromItem(item));
@@ -60,7 +75,7 @@ export function Hoy() {
           </p>
           <ul className="mt-3 flex flex-col gap-2">
             {expiringSoon.map((item) => {
-              const isExpired = item.expiresAt! <= todayStr;
+              const expired = isExpired(item.expiresAt!, todayStr);
               return (
                 <li
                   key={item.id}
@@ -70,8 +85,8 @@ export function Hoy() {
                     <p className="font-medium">
                       {item.name} {item.brand ? `(${item.brand})` : ""}
                     </p>
-                    <p className={isExpired ? "font-semibold text-clay" : "text-stone"}>
-                      {isExpired ? `¡Venció el ${item.expiresAt}!` : `Vence pronto: ${item.expiresAt}`}
+                    <p className={expired ? "font-semibold text-clay" : "text-stone"}>
+                      {expired ? `¡Venció el ${item.expiresAt}!` : `Vence pronto: ${item.expiresAt}`}
                     </p>
                   </div>
                   <button
@@ -110,17 +125,23 @@ export function Hoy() {
 
       <section className="rounded-3xl border border-line bg-card p-5">
         <p className="text-sm font-medium">Última lectura</p>
-        {lastScan ? (
+        {lastScan && home.scan ? (
           <>
             <p className="mt-2 text-sm text-stone">{stamp(lastScan.at)}</p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-soft p-4">
+            <div className={cn("mt-4 grid gap-3", home.scan.back > 0 ? "grid-cols-3" : "grid-cols-2")}>
+              <div className={cn("rounded-2xl bg-soft", home.scan.back > 0 ? "p-3" : "p-4")}>
                 <p className="text-xs text-stone">Vistos</p>
-                <p className="font-display mt-1 text-3xl">{lastScan.present}</p>
+                <p className="font-display mt-1 text-3xl">{home.scan.seen}</p>
               </div>
-              <div className="rounded-2xl bg-soft p-4">
+              {home.scan.back > 0 && (
+                <div className="rounded-2xl bg-soft p-3">
+                  <p className="text-xs text-stone">Repuestos</p>
+                  <p className="font-display mt-1 text-3xl text-sage">{home.scan.back}</p>
+                </div>
+              )}
+              <div className={cn("rounded-2xl bg-soft", home.scan.back > 0 ? "p-3" : "p-4")}>
                 <p className="text-xs text-stone">Faltan</p>
-                <p className="font-display mt-1 text-3xl text-clay">{lastScan.missing}</p>
+                <p className="font-display mt-1 text-3xl text-clay">{home.scan.missing}</p>
               </div>
             </div>
             {lastScan.note && <p className="mt-4 text-sm leading-relaxed text-ink">{lastScan.note}</p>}
@@ -128,6 +149,12 @@ export function Hoy() {
         ) : (
           <p className="mt-2 text-sm leading-relaxed text-stone">
             Todavía no hay una foto. Puedes escanear o marcar a mano lo que sí está en el estante.
+          </p>
+        )}
+        {home.restocked > 0 && (
+          <p className="mt-4 flex items-start gap-2 rounded-2xl bg-sage/10 p-3 text-sm leading-relaxed">
+            <PackageCheck className="mt-0.5 size-4 shrink-0 text-sage" aria-hidden="true" />
+            <span>{restockNote(home)}</span>
           </p>
         )}
       </section>
@@ -155,6 +182,8 @@ export function Hoy() {
           <ChevronRight className="size-5 text-stone" />
         </div>
       </button>
+
+      <BackupCard />
 
       <div className="grid grid-cols-2 gap-3">
         <button
