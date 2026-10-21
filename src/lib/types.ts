@@ -1,6 +1,9 @@
 export const UNITS = ["pza", "kg", "g", "L", "ml", "paq", "lata", "bolsa"] as const;
 export type Unit = (typeof UNITS)[number];
 
+export const PACKAGE_TYPES = ["pieza", "paquete", "bolsa", "lata", "botella", "caja", "frasco", "bote"] as const;
+export type PackageType = (typeof PACKAGE_TYPES)[number];
+
 export const CATEGORIES = [
   "Abarrotes",
   "Lácteos y huevo",
@@ -16,9 +19,17 @@ export type PantryItem = {
   name: string;
   brand: string;
   category: string;
-  targetQty: number;
+  targetQty: number; // in pantry unit (e.g. 2 L or 1 kg)
   unit: Unit;
   usualPrice: number;
+  lastPrice?: number; // Last real price paid from tickets or completed lists
+  lastPriceDate?: string;
+  packageType?: PackageType; // How it's bought: bolsa, paquete, pieza...
+  packageSize?: number; // e.g., 1 pack = 1 kg
+  packageUnit?: string;
+  isEssential?: boolean; // "Imprescindible" - no puede faltar
+  barcode?: string;
+  expiresAt?: string; // YYYY-MM-DD
 };
 
 export type ScanHit = {
@@ -43,10 +54,14 @@ export type ListLine = {
   pantryItemId: string | null;
   name: string;
   brand: string;
-  unit: string;
+  unit: string; // package or unit bought (bolsa, pieza, etc.)
   qty: number;
   unitPrice: number;
   inCart: boolean;
+  isEssential?: boolean;
+  isExtra?: boolean; // Extras de visita: not kept in pantry
+  category?: string;
+  lastPaidPrice?: number; // historical price to show if it went up
 };
 
 export type ShopList = {
@@ -57,6 +72,7 @@ export type ShopList = {
   finishedAt: string | null;
   status: "active" | "saved" | "finished";
   source: "scan" | "manual";
+  spendingBudget?: number | null; // Tope de gasto
   lines: ListLine[];
 };
 

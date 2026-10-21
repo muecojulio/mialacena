@@ -2,6 +2,8 @@ import { downloadExcel } from "@/lib/excel";
 import { lineAmount, mxn, stamp } from "@/lib/money";
 import { usePantry } from "@/lib/store";
 import { Button } from "@/components/ui";
+import { shareViaWhatsApp } from "@/lib/whatsapp";
+import { Share2 } from "lucide-react";
 
 export function Guardadas() {
   const saved = usePantry((state) => state.saved);
@@ -14,7 +16,7 @@ export function Guardadas() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl">Guardadas</h1>
-          <p className="mt-1 text-sm text-stone">Cada compra que guardaste o finalizaste.</p>
+          <p className="mt-1 text-sm text-stone">Cada compra que guardaste o finalizaste con sus precios reales pagados.</p>
         </div>
       </div>
       {saved.length === 0 && (
@@ -37,17 +39,31 @@ export function Guardadas() {
                     {list.status === "finished" ? "Finalizada" : "Guardada"} · {stamp(list.updatedAt)}
                   </p>
                 </div>
-                <p className="font-medium">{mxn(total)}</p>
+                <div className="text-right">
+                  <p className="font-medium">{mxn(total)}</p>
+                  {list.spendingBudget && list.spendingBudget > 0 && (
+                    <p className="text-[11px] text-stone">Tope: {mxn(list.spendingBudget)}</p>
+                  )}
+                </div>
               </div>
               <p className="mt-2 text-sm text-stone">{list.lines.length} productos</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Button variant="quiet" className="px-2" onClick={() => reuseSaved(list.id)}>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                <Button variant="quiet" className="px-2 text-xs" onClick={() => reuseSaved(list.id)}>
                   Repetir
                 </Button>
-                <Button variant="ghost" className="px-2" onClick={() => downloadExcel(list)}>
+                <Button
+                  variant="ghost"
+                  className="px-2 text-xs"
+                  onClick={() => shareViaWhatsApp(list)}
+                  title="Enviar por WhatsApp"
+                >
+                  <Share2 className="mr-1 size-3 text-sage" />
+                  Chat
+                </Button>
+                <Button variant="ghost" className="px-2 text-xs" onClick={() => downloadExcel(list)}>
                   Excel
                 </Button>
-                <Button variant="ghost" className="px-2" onClick={() => deleteSaved(list.id)}>
+                <Button variant="ghost" className="px-2 text-xs" onClick={() => deleteSaved(list.id)}>
                   Quitar
                 </Button>
               </div>
