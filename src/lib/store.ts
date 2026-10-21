@@ -58,6 +58,22 @@ type PantryState = {
   restoreBackup: (backup: Backup) => void; // Reemplaza todo con lo que trae el archivo
 };
 
+/** Lo que se guarda en el teléfono: el estado sin las acciones. */
+type PersistedPantryState = Pick<
+  PantryState,
+  | "theme"
+  | "view"
+  | "despensaTab"
+  | "items"
+  | "current"
+  | "saved"
+  | "lastScan"
+  | "oneHandedMode"
+  | "lastBackupAt"
+  | "reviewIntervalDays"
+  | "lastReviewedAt"
+>;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -534,6 +550,14 @@ export const usePantry = create<PantryState>()(
     {
       name: "mialacena",
       version: 2,
+      /**
+       * v1 guardaba las mismas formas sin los campos de respaldo y revisión.
+       * Las claves que falten toman el valor por defecto de arriba, así que
+       * basta con devolver lo guardado: sin esto, un teléfono con datos de la
+       * versión anterior abre con un error de consola ("couldn't be
+       * migrated") aunque el estado se cargue igual.
+       */
+      migrate: (persisted) => persisted as PersistedPantryState,
       partialize: (state) => ({
         theme: state.theme,
         view: state.view,

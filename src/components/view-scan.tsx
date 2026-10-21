@@ -7,7 +7,7 @@ import { plural } from "@/lib/money";
 import { isRestocked } from "@/lib/restock";
 import { scanPantry } from "@/lib/scan.functions";
 import { blankList, lineFromItem, usePantry } from "@/lib/store";
-import { UNITS, PACKAGE_TYPES, type PantryItem, type ScanHit, type Unit, type PackageType } from "@/lib/types";
+import { UNITS, type PantryItem, type ScanHit, type Unit, type PackageType } from "@/lib/types";
 import type { Gap } from "@/lib/match";
 import { BarcodeModal } from "@/components/barcode-modal";
 

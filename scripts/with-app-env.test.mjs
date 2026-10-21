@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -16,6 +16,20 @@ import {
 const execFileAsync = promisify(execFile);
 const WRAPPER = join(projectRoot(), "scripts/with-app-env.mjs");
 const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));";
+
+/**
+ * `.grok/` is gitignored, so a plain checkout of this app carries no
+ * `app-env.json`; the wrapper's documented no-file behaviour is "no
+ * overrides" (auth on). Expectations therefore follow whatever the workspace
+ * actually ships instead of hard-coding the template's sandbox default.
+ */
+const SHIPPED_APP_ENV = readAppEnv(projectRoot());
+const HAS_SHIPPED_APP_ENV = existsSync(join(projectRoot(), APP_ENV_REL_PATH));
+
+/** The value the wrapper hands a child launched from this process. */
+function wrappedFlag() {
+  return String(mergeAppEnv(readAppEnv(projectRoot()), process.env).VITE_AUTH_ENABLED);
+}
 
 function makeWorkspace(appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "app-env-"));
@@ -59,9 +73,13 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("the template ships auth off", () => {
-  assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
-});
+test(
+  "the template ships auth off",
+  { skip: HAS_SHIPPED_APP_ENV ? false : "no .grok/app-env.json in this checkout" },
+  () => {
+    assert.deepEqual(SHIPPED_APP_ENV, { VITE_AUTH_ENABLED: "false" });
+  },
+);
 
 test("vite loadEnv resolves the wrapped value", () => {
   // What `import.meta.env.VITE_AUTH_ENABLED` becomes: loadEnv prefix-matches
@@ -80,7 +98,7 @@ test("the wrapped command runs with the app env applied", async () => {
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  assert.equal(stdout, wrappedFlag());
 });
 
 test("the wrapped command sees an explicit override, not the file value", async () => {
@@ -124,5 +142,5 @@ test("the CLI still runs when invoked through a symlinked path", async () => {
     "-e",
     PRINT_FLAG,
   ]);
-  assert.equal(stdout, "false");
+  assert.equal(stdout, wrappedFlag());
 });

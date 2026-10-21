@@ -263,3 +263,21 @@ test("cargar un respaldo reemplaza todo y borrar el teléfono olvida el respaldo
   assert.equal(state.lastBackupAt, null);
   assert.equal(state.items.length, 0);
 });
+
+test("los datos de la versión anterior migran sin error y sin perder nada", () => {
+  // El store está en version 2 y v1 no guardaba los campos de respaldo/revisión.
+  // Sin `migrate`, zustand registra "couldn't be migrated" al abrir ese teléfono.
+  const migrate = usePantry.persist.getOptions().migrate;
+  assert.ok(migrate, "el store debe declarar migrate");
+  const v1 = {
+    theme: "light" as const,
+    view: "lista" as const,
+    despensaTab: "catalogo" as const,
+    items: [item("cafe")],
+    current: null,
+    saved: [],
+    lastScan: null,
+    oneHandedMode: true,
+  };
+  assert.deepEqual(migrate(v1, 1), v1);
+});

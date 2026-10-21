@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Receipt, Camera, Check, Upload, Loader2, X } from "lucide-react";
+import { Receipt, Camera, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { fileToJpeg } from "@/lib/images";
 import { scanTicketImage } from "@/lib/ticket.functions";
 import { parseTicketText, type TicketItem } from "@/lib/ticket-parser";
 import { recognizeTicketText } from "@/lib/ticket-ocr";
-import { mxn } from "@/lib/money";
 
 export type TicketModalProps = {
   isOpen: boolean;
