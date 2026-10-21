@@ -134,6 +134,13 @@ export type ShopList = {
   lines: ListLine[];
 };
 
-export type ViewId = "hoy" | "despensa" | "escanear" | "lista" | "guardadas";
+export type ViewId =
+  | "hoy"
+  | "despensa"
+  | "lista"
+  | "escanear"
+  | "guardadas"
+  | "instalar"
+  | "privacidad";
 export type DespensaTab = "catalogo" | "comparar" | "caducidades";
 
