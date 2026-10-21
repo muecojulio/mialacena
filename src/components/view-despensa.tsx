@@ -72,6 +72,7 @@ export function Despensa() {
   const upsertItem = usePantry((state) => state.upsertItem);
   const removeItem = usePantry((state) => state.removeItem);
   const removePreload = usePantry((state) => state.removePreload);
+  const addPreload = usePantry((state) => state.addPreload);
   const sendToShopList = usePantry((state) => state.sendToShopList);
   const setItemCurrentQty = usePantry((state) => state.setItemCurrentQty);
   const setItemPhoto = usePantry((state) => state.setItemPhoto);
@@ -89,6 +90,7 @@ export function Despensa() {
   const [draft, setDraft] = useState<PantryItem | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [confirmPreload, setConfirmPreload] = useState(false);
+  const [confirmAddPreload, setConfirmAddPreload] = useState(false);
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
   const [hints, setHints] = useState<{ code: string; name: string; brand: string }[]>([]);
   const [hintNote, setHintNote] = useState("");
@@ -121,6 +123,8 @@ export function Despensa() {
 
   const preloadIds = new Set(SEED.map((row) => row.id));
   const preloadCount = items.filter((item) => preloadIds.has(item.id)).length;
+  const itemIds = new Set(items.map((item) => item.id));
+  const missingPreload = SEED.filter((row) => !itemIds.has(row.id)).length;
 
   const shown = items.filter((item) => {
     const blob = `${item.name} ${item.brand}`.toLocaleLowerCase("es-MX");
@@ -571,7 +575,7 @@ export function Despensa() {
             })}
           </ul>
 
-          {preloadCount > 0 && (
+          {preloadCount > 0 ? (
             <div className="card-pop p-4">
               {confirmPreload ? (
                 <div className="flex flex-col gap-3">
@@ -610,7 +614,46 @@ export function Despensa() {
                 </button>
               )}
             </div>
-          )}
+          ) : missingPreload > 0 ? (
+            <div className="card-pop p-4">
+              {confirmAddPreload ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-stone">
+                    Se agregarán {missingPreload} productos precargados a tu despensa. Los
+                    que ya tengas no se duplican.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="quiet"
+                      className="flex-1"
+                      onClick={() => setConfirmAddPreload(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="flex-1"
+                      onClick={() => {
+                        addPreload();
+                        setConfirmAddPreload(false);
+                      }}
+                    >
+                      Poner precarga
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 text-sm text-stone"
+                  onClick={() => setConfirmAddPreload(true)}
+                >
+                  <Plus className="size-4" />
+                  Poner precarga ({missingPreload})
+                </button>
+              )}
+            </div>
+          ) : null}
         </>
       )}
 

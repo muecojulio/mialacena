@@ -36,6 +36,7 @@ type PantryState = {
   upsertItem: (item: PantryItem) => void;
   removeItem: (id: string) => void;
   removePreload: () => void;
+  addPreload: () => void;
   rememberScan: (report: ScanReport) => void; // Lectura nueva: borra las marcas de repuesto
   openList: (list: ShopList) => void;
   patchLine: (id: string, patch: Partial<ListLine>) => void;
@@ -262,6 +263,31 @@ export const usePantry = create<PantryState>()(
           return {
             items,
             notice: { id: Date.now(), text: "Precarga quitada de la despensa." },
+          };
+        }),
+      addPreload: () =>
+        set((state) => {
+          const toAdd = SEED.filter(
+            (row) => !state.items.some((item) => item.id === row.id),
+          );
+          if (toAdd.length === 0) {
+            return {
+              notice: {
+                id: Date.now(),
+                text: "La precarga ya está en tu despensa.",
+              },
+            };
+          }
+          return {
+            items: [...toAdd, ...state.items],
+            notice: {
+              id: Date.now(),
+              text: plural(
+                toAdd.length,
+                "producto precargado agregado",
+                "productos precargados agregados",
+              ),
+            },
           };
         }),
       rememberScan: (report) =>
