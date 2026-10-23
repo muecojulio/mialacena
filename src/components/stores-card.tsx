@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExternalLink, Loader2, MapPin, Navigation, Store } from "lucide-react";
 import { Button } from "@/components/ui";
+import { findPlaceName, type GeoPlace } from "@/lib/geo";
 import { findNearbyStores, formatDistance, type NearbyStore } from "@/lib/stores";
 
 /**
@@ -10,15 +11,19 @@ import { findNearbyStores, formatDistance, type NearbyStore } from "@/lib/stores
 export function StoresCard() {
   const [busy, setBusy] = useState(false);
   const [stores, setStores] = useState<NearbyStore[] | null>(null);
+  const [place, setPlace] = useState<GeoPlace | null>(null);
   const [error, setError] = useState("");
 
   async function search() {
     setBusy(true);
     setError("");
+    setPlace(null);
     try {
       const found = await findNearbyStores();
-      setStores(found);
-      if (!found.length) setError("No apareció ninguna tienda en 2 km a la redonda.");
+      setStores(found.stores);
+      if (!found.stores.length) setError("No apareció ninguna tienda en 2 km a la redonda.");
+      // El nombre del lugar (colonia/ciudad) es un extra: si no llega, no pasa nada.
+      void findPlaceName(found.origin.lat, found.origin.lon).then(setPlace);
     } catch (e) {
       setError(e instanceof Error ? e.message : "El mapa público no respondió.");
       setStores(null);
@@ -36,7 +41,9 @@ export function StoresCard() {
             Tiendas cercanas
           </p>
           <p className="mt-0.5 text-xs text-stone">
-            Súpers y tiendas en 2 km, del mapa público OpenStreetMap.
+            {place
+              ? `Súpers y tiendas en 2 km de ${place.short}, del mapa público OpenStreetMap.`
+              : "Súpers y tiendas en 2 km, del mapa público OpenStreetMap."}
           </p>
         </div>
         <Button variant="quiet" className="h-10 shrink-0 text-xs" disabled={busy} onClick={() => void search()}>

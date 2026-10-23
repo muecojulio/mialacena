@@ -37,11 +37,18 @@ export const CATEGORIES = [
 ] as const;
 
 /**
- * Ficha pública de un producto (Open Food Facts, sin cuenta ni llave).
+ * Familia Open * Facts (Open Food Facts, Open Beauty Facts y Open Products
+ * Facts): el mismo servidor de datos abiertos, sin cuenta ni llave. Se consulta
+ * en ese orden hasta que uno conoce el código de barras.
+ */
+export type PublicFactsSource = "openfoodfacts" | "openbeautyfacts" | "openproductsfacts";
+
+/**
+ * Ficha pública de un producto (familia Open * Facts, sin cuenta ni llave).
  * Solo datos del producto: nada de esto sale del teléfono una vez guardado.
  */
 export type PublicFacts = {
-  source: "openfoodfacts";
+  source: PublicFactsSource;
   code: string;
   imageUrl?: string;
   nutriscore?: string; // "a".."e"

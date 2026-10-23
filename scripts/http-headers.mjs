@@ -11,12 +11,38 @@
  *   Caché — los assets con hash de Vite son inmutables; los documentos HTML se
  *   revalidan siempre (`no-cache`, el ETag hace el resto); lo que no es GET y
  *   `/api/auth/*` nunca se cachea.
- *   Seguridad — CSP estricta con excepciones explícitas para lo que la app usa
- *   de verdad (fotos en data:/blob:, APIs públicas https:, HMR en dev, y los
- *   orígenes que pueden embeber la vista previa en un iframe). `X-Frame-Options`
- *   se omite a propósito: no puede expresar la lista de embebidos permitidos y
- *   rompería la vista previa; `frame-ancestors` cubre el clickjacking.
+ *   Seguridad — CSP estricta con excepciones explícitas, enumeradas host por
+ *   host, para lo que la app usa de verdad: fotos en data:/blob:, las fotos de
+ *   los catálogos públicos, el mapa, el motor de OCR y su wasm, el HMR en dev,
+ *   y los orígenes que pueden embeber la vista previa en un iframe.
+ *   `X-Frame-Options` se omite a propósito: no puede expresar la lista de
+ *   embebidos permitidos y rompería la vista previa; `frame-ancestors` cubre el
+ *   clickjacking. Se agrega COOP para aislar la ventana de un posible opener.
  */
+
+/**
+ * Hosts que el **navegador** consulta directamente (no los server functions).
+ * Si se agrega un servicio público que se llame desde el cliente, hay que
+ * sumarlo aquí: la CSP ya no permite cualquier `https:`.
+ */
+export const CLIENT_API_HOSTS = [
+  // Tiendas cercanas (Overpass, con respaldo) y nombre del lugar (Nominatim).
+  "https://overpass-api.de",
+  "https://overpass.kumi.systems",
+  "https://nominatim.openstreetmap.org",
+  // OCR local: Tesseract.js baja su worker, el wasm y el idioma español.
+  "https://cdn.jsdelivr.net",
+  "https://tessdata.projectnaptha.com",
+];
+
+/** Hosts de imágenes públicas que la app muestra (fotos de producto y recetas). */
+export const IMAGE_HOSTS = [
+  "https://*.openfoodfacts.org",
+  "https://*.openfoodfacts.net",
+  "https://*.openbeautyfacts.org",
+  "https://*.openproductsfacts.org",
+  "https://www.themealdb.com",
+];
 
 /** Orígenes que pueden mostrar la app dentro de un iframe (vista previa / deploy). */
 const FRAME_ANCESTORS = [
@@ -43,6 +69,8 @@ export function contentSecurityPolicy(opts = {}) {
     // vista previa; acotado a su carpeta, no a todo el dominio.
     "https://grok.com/grok-app-builder/",
     "https://*.grok.com/grok-app-builder/",
+    // Tesseract.js crea su worker desde el CDN público (OCR local).
+    "https://cdn.jsdelivr.net",
   ];
   // El runner de módulos de Vite en dev necesita eval; producción no.
   if (opts.isDev) scriptSrc.push("'unsafe-eval'");
@@ -50,13 +78,13 @@ export function contentSecurityPolicy(opts = {}) {
     `default-src 'self'`,
     `script-src ${scriptSrc.join(" ")}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob: https:`,
+    `img-src 'self' data: blob: ${IMAGE_HOSTS.join(" ")}`,
     `media-src 'self' blob: data:`,
     `font-src 'self' data:`,
-    // Server functions son same-origin; las APIs públicas (Overpass, etc.) se
-    // consultan https desde el cliente; ws: solo para el HMR de dev.
-    `connect-src 'self' https: ${opts.isDev ? "ws: wss:" : ""}`.trim(),
-    `worker-src 'self' blob:`,
+    // Server functions son same-origin (por eso nada de comodines https:) y las
+    // APIs públicas que se consultan desde el cliente están enumeradas.
+    `connect-src 'self' ${CLIENT_API_HOSTS.join(" ")} ${opts.isDev ? "ws: wss:" : ""}`.trim(),
+    `worker-src 'self' blob: https://cdn.jsdelivr.net`,
     `frame-src 'self'`,
     `object-src 'none'`,
     `base-uri 'self'`,
@@ -82,6 +110,11 @@ export function securityHeaders({ isHttps, isDev }) {
       "camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), browsing-topics=()",
     "x-permitted-cross-domain-policies": "none",
     "x-dns-prefetch-control": "off",
+    // Aísla la ventana de un opener ajeno sin romper el popup de sesión del
+    // mismo origen ni la vista previa embebida.
+    "cross-origin-opener-policy": "same-origin-allow-popups",
+    // Nada de la app debe cargarse como recurso de otro sitio.
+    "cross-origin-resource-policy": "same-origin",
   };
   // HSTS solo tiene sentido sobre https (Vercel termina TLS; dev es http).
   if (isHttps) {

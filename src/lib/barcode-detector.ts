@@ -12,10 +12,17 @@ type Source = HTMLImageElement | HTMLCanvasElement | ImageBitmap | HTMLVideoElem
 
 const NATIVE_FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
 
+/** Forma mínima del `BarcodeDetector` nativo (Chrome/Android, iOS 17+). */
+type NativeBarcode = { rawValue?: string };
+type NativeDetector = { detect(source: Source): Promise<NativeBarcode[]> };
+type NativeDetectorCtor = new (options: { formats: string[] }) => NativeDetector;
+
 async function detectNative(source: Source): Promise<string | null> {
-  if (typeof window === "undefined" || !("BarcodeDetector" in window)) return null;
+  if (typeof window === "undefined") return null;
+  const Detector = (window as unknown as { BarcodeDetector?: NativeDetectorCtor }).BarcodeDetector;
+  if (!Detector) return null;
   try {
-    const detector = new (window as any).BarcodeDetector({ formats: NATIVE_FORMATS });
+    const detector = new Detector({ formats: NATIVE_FORMATS });
     const barcodes = await detector.detect(source);
     if (barcodes && barcodes.length > 0) return String(barcodes[0].rawValue ?? "") || null;
   } catch (e) {

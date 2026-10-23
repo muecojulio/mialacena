@@ -135,8 +135,14 @@ function currentPosition(): Promise<{ lat: number; lon: number }> {
   });
 }
 
+export type NearbyStoresResult = {
+  stores: NearbyStore[];
+  /** Coordenadas que compartió el teléfono (para nombrar el lugar, no se guardan). */
+  origin: { lat: number; lon: number };
+};
+
 /** Pide ubicación (permiso del sistema) y trae las tiendas en un radio de 2 km. */
-export async function findNearbyStores(radiusM = 2000): Promise<NearbyStore[]> {
+export async function findNearbyStores(radiusM = 2000): Promise<NearbyStoresResult> {
   const origin = await currentPosition();
   const query = buildOverpassQuery(origin.lat, origin.lon, radiusM);
   let lastError: unknown = null;
@@ -149,7 +155,7 @@ export async function findNearbyStores(radiusM = 2000): Promise<NearbyStore[]> {
         signal: AbortSignal.timeout(20_000),
       });
       if (!res.ok) throw new Error(`Overpass ${res.status}`);
-      return parseOverpassStores(await res.json(), origin);
+      return { stores: parseOverpassStores(await res.json(), origin), origin };
     } catch (error) {
       lastError = error;
     }

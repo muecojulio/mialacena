@@ -2,21 +2,27 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bell,
+  Bot,
+  Clock,
   Cookie,
   Database,
+  EyeOff,
   FileDown,
+  Globe2,
   KeyRound,
+  Lock,
   Mail,
-  MapPin,
   RefreshCcw,
   ScanLine,
   ShieldCheck,
-  Sparkles,
   Trash2,
   UserCheck,
 } from "lucide-react";
 import { Button, Mark } from "@/components/ui";
 import { usePantry } from "@/lib/store";
+
+const UPDATED_AT = "23 de octubre de 2026";
+const VERSION = "2";
 
 function Section({
   icon,
@@ -40,6 +46,13 @@ function Section({
   );
 }
 
+/**
+ * Aviso de privacidad completo de mialacena.
+ *
+ * Regla editorial: si una función nueva manda algo fuera del teléfono, tiene
+ * que quedar listada aquí —con qué se envía y cuándo— en la misma entrega.
+ * La versión y la fecha se actualizan junto con el cambio.
+ */
 export function PrivacidadView({ standalone = false }: { standalone?: boolean }) {
   const wipe = usePantry((state) => state.wipe);
   const setView = usePantry((state) => state.setView);
@@ -77,10 +90,10 @@ export function PrivacidadView({ standalone = false }: { standalone?: boolean })
         <p className="mt-2 text-sm leading-relaxed text-white/90">
           mialacena guarda tu despensa y tus listas en este teléfono. No hay cuenta, no hay
           publicidad y no vendemos datos. Este aviso explica —en claro— qué pasa con tu
-          información.
+          información, qué sale del teléfono y cuándo.
         </p>
         <p className="mt-3 text-xs font-medium text-white/75">
-          Última actualización: 21 de octubre de 2026
+          Versión {VERSION} · Última actualización: {UPDATED_AT}
         </p>
       </header>
 
@@ -105,19 +118,108 @@ export function PrivacidadView({ standalone = false }: { standalone?: boolean })
         </div>
       </div>
 
-      <Section icon={<Database className="size-4.5" />} tone="sun" title="Qué se queda aquí">
+      <Section icon={<UserCheck className="size-4.5" />} tone="aqua" title="Quién es el responsable">
         <p>
-          Productos, marcas, cantidades, precios, fotos de producto y listas viven en el
-          almacenamiento local del navegador. Si borras los datos del sitio, se van. Otro teléfono
-          no las ve, a menos que le cargues un respaldo.
+          <strong>mialacena</strong> es una aplicación personal de despensa. El responsable del
+          tratamiento de tus datos es el equipo de mialacena, con contacto en{" "}
+          <strong className="text-ink">privacidad@mialacena.app</strong>. Se rige por la Ley Federal
+          de Protección de Datos Personales en Posesión de los Particulares (México) en lo que
+          resulte aplicable.
         </p>
       </Section>
 
-      <Section icon={<Sparkles className="size-4.5" />} tone="grape" title="Qué NO recopilamos">
+      <Section icon={<Database className="size-4.5" />} tone="sun" title="Qué se queda aquí (y por cuánto tiempo)">
         <p>
-          <strong>No pedimos correo ni contraseña</strong>, no creamos perfiles, no medimos tu
-          actividad para anunciantes y no usamos cookies de publicidad ni de terceros. No hay
-          analítica que te identifique.
+          Productos, marcas, cantidades, precios, fotos de producto, caducidades, listas, lecturas
+          de la alacena y preferencias (tema claro/oscuro, modo una mano, recordatorio de revisión)
+          viven en el <strong className="text-ink">almacenamiento local del navegador</strong> de
+          este dispositivo. Se conservan hasta que borres los datos del sitio o uses «Borrar datos
+          de este teléfono», aquí abajo.
+        </p>
+        <p className="mt-2.5">
+          <strong className="text-ink">Copia de respaldo:</strong> el archivo JSON lo arma tu
+          teléfono y lo guardas tú donde quieras. Ese archivo no está cifrado y viaja contigo: si lo
+          compartes o lo subes a la nube, pasa a estar bajo las reglas de ese servicio.
+        </p>
+      </Section>
+
+      <Section icon={<EyeOff className="size-4.5" />} tone="grape" title="Qué NO recopilamos">
+        <p>
+          <strong>No pedimos correo ni contraseña</strong>, no creamos perfiles, no accedemos a tus
+          contactos, no leemos tu ubicación en segundo plano y no medimos tu actividad para
+          anunciantes. No hay cookies de publicidad ni de terceros, ni analítica que te identifique.
+          No hay venta, renta ni cesión de datos personales a nadie.
+        </p>
+      </Section>
+
+      <Section icon={<Globe2 className="size-4.5" />} tone="sky" title="Qué sale del teléfono, cuándo y a dónde">
+        <p>
+          Nada sale solo: cada consulta ocurre cuando tú la pides (escanear, buscar, abrir una
+          ficha). Todas estas APIs son públicas, sin llave y sin registro, y reciben lo mínimo:
+        </p>
+        <ul className="mt-2.5 flex flex-col gap-2">
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">Open Food Facts, Open Beauty Facts y Open Products
+            Facts:</strong> el <strong>código de barras</strong> que escaneaste (o el texto que
+            escribes al buscar) para traer su ficha: foto, Nutri-Score, alérgenos, ingredientes y
+            presentación. La ficha queda luego en tu teléfono. Datos abiertos bajo ODbL.
+          </li>
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">Open Prices:</strong> el mismo código, para enseñar precios
+            públicos de referencia. Nunca se copian a tu despensa como si fueran pesos.
+          </li>
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">Frankfurter (Banco Central Europeo):</strong> solo la
+            <strong> moneda</strong> del precio público (por ejemplo «EUR»), para dar una
+            equivalencia aproximada en pesos. No viaja ningún dato tuyo.
+          </li>
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">TheMealDB:</strong> un <strong>ingrediente en inglés</strong>{" "}
+            («egg», «milk») para sugerir recetas. No viajan cantidades, precios ni el resto de tu
+            despensa.
+          </li>
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">Nager.Date:</strong> solo se pregunta qué feriados vienen en
+            México; no viaja ningún dato tuyo.
+          </li>
+          <li className="rounded-2xl bg-soft p-2.5">
+            <strong className="text-ink">OpenStreetMap (Overpass y Nominatim):</strong> al pulsar
+            «Buscar cerca de mí», tu <strong>ubicación</strong> va directo de tu teléfono al mapa
+            público, con el permiso del sistema, para listar súpers en 2 km y nombrar la colonia.
+            No pasa por el servidor de mialacena ni se guarda.
+          </li>
+        </ul>
+        <p className="mt-2.5">
+          Las consultas a esas APIs se hacen desde el servidor de la app (salvo la del mapa), que no
+          guarda tus datos: mantiene en memoria unas horas la ficha o el tipo de cambio ya
+          consultado, sin asociarlo a ninguna persona.
+        </p>
+      </Section>
+
+      <Section icon={<ScanLine className="size-4.5" />} tone="clay" title="Fotos, video y lectura con IA">
+        <p>
+          Las fotos y el video se reducen en tu teléfono y <strong>solo salen</strong> cuando pulsas
+          «Decirme qué falta» o el análisis de un ticket. En ese caso se envían al servicio de
+          lectura con IA (xAI) para identificar productos o precios y la app recibe el resultado;{" "}
+          <strong>no se almacenan</strong> en el servidor de mialacena y la llave del servicio nunca
+          llega al navegador. Son fotos de tu alacena o de tu ticket: evita enfocar datos que no
+          quieras compartir.
+        </p>
+        <p className="mt-2.5">
+          Si esa lectura no está configurada, o falla, la app usa el <strong>OCR local</strong>
+          (Tesseract.js) y el <strong>lector de códigos ZXing</strong>, que corren dentro de tu
+          teléfono: esas imágenes no salen a ningún servicio.
+        </p>
+      </Section>
+
+      <Section icon={<Bot className="size-4.5" />} tone="berry" title="Cuando un servicio público falla">
+        <p>
+          La app intenta primero el servicio público. Si no responde y la lectura con IA está
+          configurada, puede pedirle <strong>solo los nombres de los productos</strong> de tu
+          despensa (sin precios ni cantidades) para sugerir recetas; esas sugerencias se marcan como
+          «sugerida por IA». El tipo de cambio también puede venir de un valor de respaldo
+          configurado por la propia app cuando el servicio del BCE no responde. En ningún caso se
+          crea un perfil con esa información.
         </p>
       </Section>
 
@@ -130,82 +232,56 @@ export function PrivacidadView({ standalone = false }: { standalone?: boolean })
         </p>
       </Section>
 
-      <Section icon={<ScanLine className="size-4.5" />} tone="clay" title="Fotos y video">
-        <p>
-          Solo salen de tu teléfono cuando pulsas «Decirme qué falta». Antes se reducen a JPEG y se
-          les quita el archivo original. El servidor no las guarda: las usa una vez para leer el
-          estante y responde con la lista. La clave de ese servicio no viaja al navegador.
-        </p>
-      </Section>
-
-      <Section icon={<Cookie className="size-4.5" />} tone="berry" title="Catálogo de marcas">
-        <p>
-          Al escribir un producto se consulta Open Food Facts, un catálogo público. Solo se envía el
-          texto que escribes, no tu lista ni tus precios.
-        </p>
-      </Section>
-
-      <Section icon={<MapPin className="size-4.5" />} tone="aqua" title="Servicios públicos sin cuenta">
-        <p>
-          Ninguno pide registro ni llave, y cada uno recibe lo mínimo, solo cuando lo usas:
-        </p>
-        <ul className="mt-2.5 flex flex-col gap-2">
-          <li className="rounded-2xl bg-soft p-2.5">
-            <strong className="text-ink">Open Food Facts y Open Prices:</strong> el código de
-            barras que escaneaste, para traer su ficha (Nutri-Score, alérgenos, ingredientes) y
-            precios públicos de referencia. La ficha se guarda después en tu teléfono.
-          </li>
-          <li className="rounded-2xl bg-soft p-2.5">
-            <strong className="text-ink">TheMealDB:</strong> un ingrediente en inglés («egg»,
-            «milk») para sugerir recetas. No viajan cantidades ni precios.
-          </li>
-          <li className="rounded-2xl bg-soft p-2.5">
-            <strong className="text-ink">Nager.Date:</strong> solo se pregunta qué feriados vienen
-            en México; no viaja ningún dato tuyo.
-          </li>
-          <li className="rounded-2xl bg-soft p-2.5">
-            <strong className="text-ink">OpenStreetMap (Overpass):</strong> al pulsar «Buscar cerca
-            de mí», tu ubicación va directo de tu teléfono al mapa público, con el permiso del
-            sistema. No pasa por el servidor de mialacena ni se guarda.
-          </li>
-        </ul>
-        <p className="mt-2.5">
-          La lectura de códigos de barras (ZXing) y el OCR de tickets (Tesseract.js) corren dentro
-          de tu teléfono: esas fotos no salen a ningún servicio.
-        </p>
-      </Section>
-
       <Section icon={<Cookie className="size-4.5" />} tone="sky" title="Cookies y almacenamiento local">
         <p>
-          mialacena usa el almacenamiento del navegador (y no cookies de rastreo) para recordar tu
-          despensa, tus listas y tu tema claro/oscuro. Borrar los datos del sitio en tu navegador
-          borra todo lo que la app guarda.
+          mialacena <strong>no usa cookies de rastreo</strong>. Usa el almacenamiento del navegador
+          para recordar tu despensa, tus listas y tu tema. Borrar los datos del sitio en tu
+          navegador borra todo lo que la app guarda; también puedes hacerlo con el botón de abajo.
         </p>
       </Section>
 
-      <Section icon={<KeyRound className="size-4.5" />} tone="grape" title="Seguridad">
+      <Section icon={<Lock className="size-4.5" />} tone="grape" title="Seguridad">
         <p>
           La app responde con encabezados de seguridad (CSP, anti-MIME-sniffing, política de
-          permisos y referer), limita la frecuencia de sus servicios y valida cada dato que entra.
-          Aun así, ningún sistema es perfecto: guarda un respaldo si tu despensa es valiosa para
-          ti.
+          permisos, referer y aislamiento de ventana), limita la frecuencia de sus servicios y valida
+          cada dato que entra. Las llaves de servicios viven solo en el servidor. La conexión con el
+          sitio usa HTTPS. Ningún sistema es perfecto: si tu despensa es valiosa para ti, guarda un
+          respaldo.
         </p>
       </Section>
 
-      <Section icon={<UserCheck className="size-4.5" />} tone="clay" title="Tus derechos (ARCO)">
+      <Section icon={<Clock className="size-4.5" />} tone="sun" title="Cuánto tiempo se conserva">
+        <p>
+          En tu teléfono, hasta que tú lo borres. En el servidor de la app, <strong>nada</strong>:
+          no hay base de datos de usuarios ni de despensas. Los servicios públicos consultados
+          aplican sus propias políticas de retención de registros técnicos (dirección IP) por
+          seguridad; mialacena no controla eso ni les envía un identificador tuyo.
+        </p>
+      </Section>
+
+      <Section icon={<KeyRound className="size-4.5" />} tone="grape" title="Tus derechos (ARCO)">
         <p>
           Como tus datos viven solo en tu teléfono, tú ejerces tus derechos de acceso, rectificación,
           cancelación y oposición directamente en la app: edita o borra productos y listas cuando
-          quieras, o usa «Borrar datos de este teléfono» de abajo. No hay copia en nuestros
-          servidores que eliminar porque no existe.
+          quieras, descarga un respaldo o usa «Borrar datos de este teléfono». No hay copia en
+          nuestros servidores que eliminar porque no existe. Para dudas o ejercicio de derechos por
+          correo, escríbenos a <strong className="text-ink">privacidad@mialacena.app</strong>.
         </p>
       </Section>
 
-      <Section icon={<RefreshCcw className="size-4.5" />} tone="sage" title="Cambios a este aviso">
+      <Section icon={<RefreshCcw className="size-4.5" />} tone="sage" title="Menores de edad">
         <p>
-          Si algún día la app cambia —por ejemplo, si se agregara sincronización entre
-          dispositivos— este aviso se actualizará aquí mismo, con su fecha, y te avisaremos dentro
-          de la app antes de que cambie el trato de tus datos.
+          mialacena no está dirigida a menores de edad y no recopila datos de menores de forma
+          consciente, porque no recopila datos personales de nadie. Si un menor usa la app, es
+          responsabilidad de quien ejerce la patria potestad supervisar el dispositivo.
+        </p>
+      </Section>
+
+      <Section icon={<RefreshCcw className="size-4.5" />} tone="clay" title="Cambios a este aviso">
+        <p>
+          Si algún día la app cambia —por ejemplo, si se agregara sincronización entre dispositivos
+          o un servicio nuevo que reciba datos— este aviso se actualizará aquí mismo, con su versión
+          y fecha, y te avisaremos dentro de la app antes de que cambie el trato de tus datos.
         </p>
       </Section>
 
@@ -250,7 +326,7 @@ export function PrivacidadView({ standalone = false }: { standalone?: boolean })
           mialacena · Hecho con cariño en México 🇲🇽
         </p>
         <p className="text-[11px] text-stone">
-          Este aviso se aplica a la app mialacena en este dispositivo.
+          Versión {VERSION} del aviso · aplica a la app mialacena en este dispositivo.
         </p>
         <span className="sticker sticker-clay mt-1">
           <Bell className="size-3" />

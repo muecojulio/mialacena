@@ -145,7 +145,10 @@ export type Recipe = {
   thumb?: string;
   area?: string;
   category?: string;
-  sourceUrl: string;
+  /** Página pública de la receta. Las sugeridas por IA no tienen enlace. */
+  sourceUrl?: string;
+  /** De dónde salió: TheMealDB o el respaldo con IA cuando el servicio público falla. */
+  origin?: "themealdb" | "ai";
   /** Ingredientes (inglés, tal cual los da TheMealDB) que sí están en la despensa. */
   have: string[];
   /** Faltantes ya traducidos al español cuando el diccionario los conoce. */
@@ -232,6 +235,7 @@ export function scoreRecipe(mealJson: unknown, pantry: PantryIngredient[]): Reci
     area: asText(meal.strArea, 40) || undefined,
     category: asText(meal.strCategory, 40) || undefined,
     sourceUrl: `https://www.themealdb.com/meal/${id}`,
+    origin: "themealdb",
     have,
     missing,
   };

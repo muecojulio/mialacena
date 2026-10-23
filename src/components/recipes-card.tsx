@@ -46,8 +46,12 @@ export function RecipesCard() {
           pantryNames: available.map((entry) => entry.item.name),
         },
       });
-      if (result.ok) setRecipes(result.recipes);
-      else {
+      if (result.ok) {
+        setRecipes(result.recipes);
+        if (result.origin === "ai") {
+          setError("");
+        }
+      } else {
         setRecipes(null);
         setError(result.error);
       }
@@ -149,6 +153,7 @@ export function RecipesCard() {
                   <p className="text-xs text-stone">
                     {[recipe.category, recipe.area].filter(Boolean).join(" · ") ||
                       "Receta pública"}
+                    {recipe.origin === "ai" ? " · sugerida por IA" : ""}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-stone">
                     Ya tienes {recipe.have.length}
@@ -159,15 +164,21 @@ export function RecipesCard() {
                 </div>
               </div>
               <div className="mt-2.5 grid grid-cols-2 gap-2">
-                <a
-                  href={recipe.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-card px-3 text-xs font-semibold text-ink transition-transform active:scale-[0.96]"
-                >
-                  <ExternalLink className="size-3.5" />
-                  Ver receta
-                </a>
+                {recipe.sourceUrl ? (
+                  <a
+                    href={recipe.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-card px-3 text-xs font-semibold text-ink transition-transform active:scale-[0.96]"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    Ver receta
+                  </a>
+                ) : (
+                  <p className="inline-flex h-9 items-center justify-center rounded-xl bg-card px-3 text-center text-[11px] font-medium text-stone">
+                    Idea para tu despensa
+                  </p>
+                )}
                 <button
                   type="button"
                   disabled={recipe.missing.length === 0}
@@ -184,8 +195,9 @@ export function RecipesCard() {
       )}
 
       <p className="mt-2.5 text-[11px] text-stone">
-        Solo viaja el ingrediente en inglés (p. ej. «egg»). Títulos e instrucciones están en el idioma
-        de TheMealDB.
+        De TheMealDB solo viaja el ingrediente en inglés (p. ej. «egg»). Si ese servicio no
+        responde, la app pide ideas con los nombres de tu despensa al lector de IA (solo si está
+        configurado) y las marca como «sugerida por IA».
       </p>
     </section>
   );

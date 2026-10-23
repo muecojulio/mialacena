@@ -333,3 +333,44 @@ el suyo.
   `public, max-age=3600`; POST sin caché.
 - Capturas headless de Hoy/Despensa/Lista/Privacidad en claro y oscuro, sin errores de
   consola bloqueantes.
+
+---
+
+## 6. APIs públicas nuevas, caché, seguridad, índices y aviso de privacidad
+
+Revisión del **23 de octubre de 2026**. La app se levantó con `npm run dev`, se
+verificó con `curl` (HTML, `/privacidad`, manifest, encabezados) y se corrieron
+`npm run typecheck`, `npm run lint`, `npm test` (**137 pruebas, 0 fallos**) y
+`npm run build` (compila y genera el paquete de Vercel). El entorno de este
+sandbox no tiene salida a las APIs públicas, así que cada parser se probó con
+respuestas reales recortadas (el mismo patrón de siempre); los caminos de red se
+revisaron con dobles de prueba (`fetcher` inyectado).
+
+### Lo que se agregó
+
+| Tema | Qué se hizo | Dónde |
+|---|---|---|
+| **Catálogo de productos** | Cadena **Open Food Facts → Open Beauty Facts → Open Products Facts**: un código de limpieza o higiene ya no queda «desconocido» solo porque no es comida. La ficha indica de qué servicio salió y enlaza a su página | `src/lib/product-sources.ts`, `src/lib/off.ts`, `facts.functions.ts`, `barcode.functions.ts` |
+| **Autocompletar marcas** | Si Open Food Facts no tiene resultados, se busca en Open Beauty Facts (cloro, jabón, shampoo) | `src/lib/catalog.functions.ts` |
+| **Precios públicos en pesos** | Equivalencia **aproximada** en MXN con el tipo de cambio del BCE (Frankfurter, sin llave), etiquetada como referencia y con fecha. Nunca se copia a la despensa | `src/lib/fx.ts`, `src/lib/fx.functions.ts`, `facts-panel.tsx` |
+| **Nombre de la colonia** | «Súpers cerca de Coyoacán» con Nominatim (OpenStreetMap), una consulta por búsqueda, desde el teléfono y sin guardar la ubicación | `src/lib/geo.ts`, `stores-card.tsx` |
+| **Respaldo de recetas con IA** | Si TheMealDB no responde o no conoce el ingrediente, y `XAI_API_KEY` está configurada, se piden ideas con los nombres de la despensa y se marcan como «sugerida por IA» | `src/lib/recipes-ai.ts`, `src/lib/ai.ts`, `ai.server.ts` |
+| **Variables de entorno con respaldo** | `XAI_API_KEY` activa la lectura con IA y las recetas de respaldo; `FX_MXN_PER_USD` / `FX_MXN_PER_EUR` dan el tipo de cambio cuando Frankfurter falla; sin nada de eso la app sigue igual y lo dice | `docs/APIS-PUBLICAS.md` §Variables |
+| **Caché** | Una sola petición en vuelo por URL, tope de tamaño de respuesta, TTL por tipo de dato (ficha 6 h, precios 1 h, cambio 6 h, recetas 30 min, feriados 24 h, búsquedas 10 min) y caché negativa de códigos desconocidos; en el navegador, `client-cache` evita repetir fichas y se limpia al borrar los datos | `src/lib/public-fetch.ts`, `src/lib/client-cache.ts` |
+| **Índices** | Análisis completo en `docs/BASE-DE-DATOS.md`. Los datos de la app no están en SQL (no hay nada que indexar); se agregaron los índices que faltaban a las tablas de sesión: `session (userId, expiresAt)`, `account (userId, providerId)`, `user (lower(email))`, retirando dos redundantes | `migrations/0003_auth_consulta_indices.sql` |
+| **Seguridad** | CSP sin comodín `https:` (hosts enumerados), COOP y CORP, límites de tamaño en las fotos de ticket, IP de plataforma antes que `x-forwarded-for`, `no-explicit-any` como error, 121 paquetes sin uso fuera, ZXing fijado a la versión que soporta Node 22 | `scripts/http-headers.mjs`, `src/lib/rate-limit.server.ts`, `scripts/http-headers.test.mjs` |
+| **Aviso de privacidad** | Versión 2, completa: responsable, qué se queda, qué no se recopila, qué sale y a dónde (servicio por servicio), fotos e IA, respaldos, cookies, seguridad, retención, ARCO, menores, cambios y contacto | `src/components/view-privacidad.tsx`, `/privacidad` |
+| **Código muerto** | Se quitaron utilidades sin uso, el `any` del lector de códigos y la duplicación del caché del catálogo. La prueba huérfana `pantry-features.test.ts` volvió a la batería | varios |
+
+### Pruebas nuevas
+
+`fx.test.ts` (tipo de cambio y respaldo por entorno), `product-sources.test.ts`
+(cadena de catálogos, caché negativa y búsqueda de las dos formas),
+`geo.test.ts` (Nominatim), `recipes-ai.test.ts` (saneado de las sugerencias) y
+`scripts/http-headers.test.mjs` (CSP, HSTS, COOP/CORP y caché por ruta).
+
+### Riesgos residuales
+
+Están escritos en `docs/SEGURIDAD.md` §3: las fotos que se mandan a la IA cuando
+la persona lo pide, el almacenamiento local sin cifrar, el límite de frecuencia
+por instancia, `'unsafe-inline'` en el arranque del tema y el CDN del OCR local.
