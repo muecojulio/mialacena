@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Backup } from "./backup.ts";
+import { clearClientCache } from "./client-cache.ts";
 import { dayKey, isExpired } from "./dates.ts";
 import { plural } from "./money.ts";
 import { comparePantryItem, describePurchaseVsConsumption } from "./pantry-helpers.ts";
@@ -515,7 +516,9 @@ export const usePantry = create<PantryState>()(
       deleteSaved: (id) => set((state) => ({ saved: state.saved.filter((row) => row.id !== id) })),
       toast: (text) => set({ notice: { id: Date.now(), text } }),
       clearNotice: () => set({ notice: null }),
-      wipe: () =>
+      wipe: () => {
+        // Nada de fichas ni tipos de cambio rondando en memoria tras borrar todo.
+        clearClientCache();
         set({
           items: [],
           current: null,
@@ -525,7 +528,8 @@ export const usePantry = create<PantryState>()(
           lastReviewedAt: null,
           view: "hoy",
           notice: { id: Date.now(), text: "Se borraron despensa y listas de este teléfono." },
-        }),
+        });
+      },
       checkExpiredItems: () => {
         const state = get();
         const today = dayKey();

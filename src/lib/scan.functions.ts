@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { rateLimit } from "@/lib/rate-limit";
 import type { ScanHit } from "@/lib/types";
+import { jsonFromAi } from "./ai.ts";
 
 type ScanInput = {
   images: string[];
@@ -10,17 +11,24 @@ type ScanInput = {
 type ScanOk = { ok: true; items: ScanHit[]; note: string };
 type ScanErr = { ok: false; error: string };
 
+/** Tope por foto (JPEG ya comprimido en el teléfono) y tope del conjunto. */
+const MAX_IMAGE_CHARS = 1_200_000;
+const MAX_TOTAL_CHARS = 4_000_000;
+
 function asScanInput(input: ScanInput): ScanInput {
   if (!input || !Array.isArray(input.images)) throw new Error("Faltan las fotos");
   if (input.images.length < 1 || input.images.length > 4) {
     throw new Error("Envía entre 1 y 4 fotos");
   }
+  let total = 0;
   for (const image of input.images) {
     if (typeof image !== "string" || !image.startsWith("data:image/jpeg;base64,")) {
       throw new Error("Cada foto tiene que ir comprimida");
     }
-    if (image.length > 1_200_000) throw new Error("Una foto sigue siendo demasiado pesada");
+    if (image.length > MAX_IMAGE_CHARS) throw new Error("Una foto sigue siendo demasiado pesada");
+    total += image.length;
   }
+  if (total > MAX_TOTAL_CHARS) throw new Error("Son demasiadas fotos juntas; manda menos");
   const expected = Array.isArray(input.expected)
     ? input.expected.slice(0, 80).map((row) => ({
         name: String(row?.name ?? "").slice(0, 80),
@@ -30,28 +38,10 @@ function asScanInput(input: ScanInput): ScanInput {
   return { images: input.images, expected };
 }
 
-function textOf(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") return part;
-        if (part && typeof part === "object" && "text" in part) return String(part.text ?? "");
-        return "";
-      })
-      .join("");
-  }
-  return "";
-}
-
-function parseHits(raw: string): { items: ScanHit[]; note: string } {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("respuesta vacía");
-  const parsed = JSON.parse(raw.slice(start, end + 1)) as {
-    items?: unknown;
-    note?: unknown;
-  };
+/** Convierte la respuesta del modelo en lecturas; tolera texto alrededor del JSON. */
+export function parseHits(raw: string): { items: ScanHit[]; note: string } {
+  const parsed = jsonFromAi(raw) as { items?: unknown; note?: unknown } | null;
+  if (!parsed || typeof parsed !== "object") throw new Error("respuesta vacía");
   const items = Array.isArray(parsed.items) ? parsed.items : [];
   const hits: ScanHit[] = [];
   for (const row of items.slice(0, 40)) {
@@ -81,8 +71,9 @@ export const scanPantry = createServerFn({ method: "POST" })
   .middleware([rateLimit("scan", 8, 60_000)])
   .validator(asScanInput)
   .handler(async ({ data }): Promise<ScanOk | ScanErr> => {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) {
+    // La llave vive en el módulo de servidor: se carga sólo dentro del handler.
+    const { xaiAvailable, xaiChat } = await import("./ai.server.ts");
+    if (!xaiAvailable()) {
       return {
         ok: false,
         error: "La lectura automática no está disponible. Marca tú lo que ves en el estante.",
@@ -111,36 +102,19 @@ export const scanPantry = createServerFn({ method: "POST" })
       ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
     ];
 
-    const payload = {
-      model: "grok-4.5",
-      temperature: 0.2,
-      max_tokens: 900,
-      messages: [{ role: "user", content }],
-    };
-
-    let response: Response | null = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      response = await fetch("https://api.x.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok || (response.status !== 429 && response.status !== 503)) break;
+    const result = await xaiChat({ content, maxTokens: 900, temperature: 0.2 });
+    if (!result.ok) {
+      return {
+        ok: false,
+        error:
+          result.reason === "busy"
+            ? "El lector está saturado. Espera un momento o marca lo que ves a mano."
+            : "No se pudo leer la alacena en este momento. Inténtalo de nuevo.",
+      };
     }
 
-    if (!response?.ok) {
-      return { ok: false, error: "No se pudo leer la alacena en este momento. Inténtalo de nuevo." };
-    }
-
-    const body = (await response.json()) as {
-      choices?: { message?: { content?: unknown } }[];
-    };
-    const text = textOf(body.choices?.[0]?.message?.content);
     try {
-      const parsed = parseHits(text);
+      const parsed = parseHits(result.text);
       return { ok: true, items: parsed.items, note: parsed.note };
     } catch {
       return { ok: false, error: "La lectura no salió clara. Prueba con más luz o marca lo que ves." };

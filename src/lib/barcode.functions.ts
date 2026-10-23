@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { rateLimit } from "@/lib/rate-limit";
 import { COMMON_BARCODES } from "./barcode-db.ts";
-import { offProductUrl, parseOffProduct } from "./off.ts";
-import { fetchJson } from "./public-fetch.ts";
+import { cleanBarcode } from "./public-fetch.ts";
+import { findProductByCode } from "./product-sources.ts";
 import type { PublicFacts } from "./types.ts";
 
 type BarcodeHit = {
@@ -16,45 +16,44 @@ type BarcodeHit = {
   usualPrice?: number;
   packageSize?: number;
   packageUnit?: string;
-  /** Ficha pública (Nutri-Score, alérgenos, foto…) cuando OFF conoce el código. */
+  /** Ficha pública (Nutri-Score, alérgenos, foto…) cuando la familia Open * Facts lo conoce. */
   facts?: PublicFacts;
 };
 
 type BarcodeOk = { ok: true; product: BarcodeHit };
-type BarcodeErr = { ok: false; error: string; fallbackCode?: string };
 
+/**
+ * Código de barras → producto conocido. Tres niveles, todos sin llave:
+ *   1. catálogo local de básicos (`barcode-db.ts`), instantáneo;
+ *   2. Open Food Facts → Open Beauty Facts → Open Products Facts;
+ *   3. si nadie lo conoce, una sugerencia editable con el código.
+ */
 export const lookupBarcode = createServerFn({ method: "POST" })
   .middleware([rateLimit("barcode", 30, 60_000)])
-  .validator((input: { barcode: string }) => {
-    const code = String(input?.barcode ?? "").trim().replace(/\D/g, "");
-    if (code.length < 5) throw new Error("Código de barras inválido");
-    return { barcode: code };
-  })
-  .handler(async ({ data }): Promise<BarcodeOk | BarcodeErr> => {
+  .validator((input: { barcode: string }) => ({ barcode: cleanBarcode(input?.barcode) }))
+  .handler(async ({ data }): Promise<BarcodeOk> => {
     const code = data.barcode;
 
-    // Check local lookup first
-    if (COMMON_BARCODES[code]) {
-      const match = COMMON_BARCODES[code];
+    const local = COMMON_BARCODES[code];
+    if (local) {
       return {
         ok: true,
         product: {
           barcode: code,
-          name: match.name || "Producto " + code,
-          brand: match.brand || "",
-          category: match.category || "Abarrotes",
-          packageType: match.packageType || "pieza",
-          unit: match.unit || "pza",
-          targetQty: match.targetQty || 1,
-          usualPrice: match.usualPrice || 0,
+          name: local.name || `Producto ${code}`,
+          brand: local.brand || "",
+          category: local.category || "Abarrotes",
+          packageType: local.packageType || "pieza",
+          unit: local.unit || "pza",
+          targetQty: local.targetQty || 1,
+          usualPrice: local.usualPrice || 0,
         },
       };
     }
 
-    // Try Open Food Facts (público, sin llave): nombre, marca y ficha completa
-    const json = await fetchJson(offProductUrl(code));
-    const off = json ? parseOffProduct(json) : null;
-    if (off) {
+    const found = await findProductByCode(code);
+    if (found.product) {
+      const off = found.product;
       return {
         ok: true,
         product: {
@@ -73,7 +72,6 @@ export const lookupBarcode = createServerFn({ method: "POST" })
       };
     }
 
-    // Fallback: Return code with a generic suggestion
     return {
       ok: true,
       product: {

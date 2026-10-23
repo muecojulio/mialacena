@@ -100,14 +100,10 @@ export function BarcodeModal({ isOpen, onClose, onFound, title = "Escanear códi
     setError(null);
     try {
       const res = await lookupBarcode({ data: { barcode: clean } });
-      if (res.ok) {
-        onFound(res.product);
-        onClose();
-      } else {
-        setError(res.error || "No se encontró el producto.");
-      }
-    } catch (err: any) {
-      setError(err?.message || "Error al consultar el código.");
+      onFound(res.product);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al consultar el código.");
     } finally {
       setLoading(false);
     }

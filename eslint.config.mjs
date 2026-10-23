@@ -39,7 +39,8 @@ export default tseslint.config(
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      "@typescript-eslint/no-explicit-any": "off",
+      // Sin `any` en el código de la app: los tipos ayudan a no romper datos.
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
   // Disable rules that conflict with Prettier formatting.

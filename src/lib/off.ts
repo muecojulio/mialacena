@@ -1,10 +1,11 @@
-import type { PublicFacts } from "./types.ts";
+import type { PublicFacts, PublicFactsSource } from "./types.ts";
 
 /**
- * Open Food Facts (https://world.openfoodfacts.org) — catálogo público y abierto,
- * sin llave ni registro. Datos bajo ODbL; la app solo lee la ficha de un código
- * que la persona escaneó o eligió. Este módulo es puro: convierte la respuesta
- * de la API v2 en la ficha que entiende mialacena, sin tocar la red.
+ * Familia Open * Facts (https://world.openfoodfacts.org y sus hermanos
+ * world.openbeautyfacts.org / world.openproductsfacts.org) — catálogo público y
+ * abierto, sin llave ni registro. Datos bajo ODbL; la app solo lee la ficha de
+ * un código que la persona escaneó o eligió. Este módulo es puro: convierte la
+ * respuesta de la API v2 en la ficha que entiende mialacena, sin tocar la red.
  *
  * Referencia de campos: documentación de la API en el repo público
  * github.com/openfoodfacts/openfoodfacts-server (API v2, parámetro `fields`).
@@ -33,9 +34,15 @@ export function offProductUrl(code: string): string {
   return `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${OFF_FIELDS}`;
 }
 
-/** Página pública del producto, para atribuir y permitir corregir datos. */
-export function offWebUrl(code: string): string {
-  return `https://world.openfoodfacts.org/product/${encodeURIComponent(code)}`;
+/** Página pública del producto en el servicio de la familia que lo conoce. */
+export function offWebUrlFor(source: PublicFactsSource, code: string): string {
+  const host =
+    source === "openbeautyfacts"
+      ? "world.openbeautyfacts.org"
+      : source === "openproductsfacts"
+        ? "world.openproductsfacts.org"
+        : "world.openfoodfacts.org";
+  return `https://${host}/product/${encodeURIComponent(code)}`;
 }
 
 export type OffProduct = {
@@ -45,6 +52,10 @@ export type OffProduct = {
   categoryGuess?: string;
   packageSize?: number;
   packageUnit?: string;
+  /** De qué servicio de la familia salió la ficha. */
+  source: PublicFactsSource;
+  /** Página pública del producto en ese servicio (atribución / corregir). */
+  webUrl: string;
   facts: PublicFacts;
 };
 
@@ -126,7 +137,11 @@ const SIZE_UNITS = new Set(["g", "kg", "ml", "L", "l"]);
  * Convierte la respuesta de `GET /api/v2/product/{code}.json` en producto + ficha.
  * Devuelve `null` si OFF no conoce el código (status 0) o la forma no sirve.
  */
-export function parseOffProduct(json: unknown, fetchedAt = new Date().toISOString()): OffProduct | null {
+export function parseOffProduct(
+  json: unknown,
+  fetchedAt = new Date().toISOString(),
+  source: PublicFactsSource = "openfoodfacts",
+): OffProduct | null {
   const root = asRecord(json);
   if (!root || root.status !== 1) return null;
   const product = asRecord(root.product);
@@ -140,7 +155,7 @@ export function parseOffProduct(json: unknown, fetchedAt = new Date().toISOStrin
 
   const nutriments = asRecord(product.nutriments) ?? {};
   const facts: PublicFacts = {
-    source: "openfoodfacts",
+    source,
     code,
     fetchedAt,
   };
@@ -189,6 +204,8 @@ export function parseOffProduct(json: unknown, fetchedAt = new Date().toISOStrin
     categoryGuess: categoryGuess(product.categories_tags),
     packageSize: size && SIZE_UNITS.has(sizeUnitRaw) ? size : undefined,
     packageUnit: size && SIZE_UNITS.has(sizeUnitRaw) ? sizeUnit : undefined,
+    source,
+    webUrl: offWebUrlFor(source, code),
     facts,
   };
 }

@@ -1,12 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { rateLimit } from "@/lib/rate-limit";
+import { fetchJson, ttlCache } from "./public-fetch.ts";
+import {
+  parseCatalogSearch,
+  sourceSearchUrl,
+  type CatalogHit,
+} from "./product-sources.ts";
 
-type CatalogHit = { code: string; name: string; brand: string };
 type CatalogOk = { ok: true; products: CatalogHit[] };
 type CatalogErr = { ok: false; error: string };
 
-const cache = new Map<string, { at: number; products: CatalogHit[] }>();
-const CACHE_MS = 10 * 60 * 1000;
+/** El catálogo cambia poco: 10 minutos por búsqueda, compartidos en el proceso. */
+const cache = ttlCache<CatalogHit[]>(10 * 60 * 1000, 50);
 
 function asQuery(input: { query: string }): { query: string } {
   const query = String(input?.query ?? "")
@@ -16,58 +21,32 @@ function asQuery(input: { query: string }): { query: string } {
   return { query };
 }
 
+/**
+ * Autocompletar marcas y productos al escribir en la despensa. Busca primero en
+ * Open Food Facts (alimentos) y, si no hay resultados, en Open Beauty Facts
+ * (higiene y limpieza). Sin llave y sin cuenta; solo viaja el texto escrito.
+ */
 export const searchProducts = createServerFn({ method: "POST" })
   .middleware([rateLimit("catalog", 24, 60_000)])
   .validator(asQuery)
   .handler(async ({ data }): Promise<CatalogOk | CatalogErr> => {
     const key = data.query.toLocaleLowerCase("es-MX");
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.at < CACHE_MS) return { ok: true, products: hit.products };
+    if (hit) return { ok: true, products: hit };
 
-    const url = new URL("https://search.openfoodfacts.org/search");
-    url.searchParams.set("q", data.query);
-    url.searchParams.set("page_size", "8");
-    url.searchParams.set("lc", "es");
+    let answered = false;
+    for (const source of ["openfoodfacts", "openbeautyfacts"] as const) {
+      const json = await fetchJson(sourceSearchUrl(source, data.query), 7000);
+      if (!json) continue;
+      answered = true;
+      const products = parseCatalogSearch(json);
+      if (products.length) {
+        cache.set(key, products);
+        return { ok: true, products };
+      }
+    }
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "mialacena/1.0 (despensa personal)",
-        },
-        // Corte duro: un upstream colgado no debe retener el proceso.
-        signal: AbortSignal.timeout(8000),
-      });
-    } catch {
-      return { ok: false, error: "El catálogo público no respondió." };
-    }
-    if (!response.ok) return { ok: false, error: "El catálogo público no está disponible." };
-
-    const body = (await response.json()) as {
-      hits?: { code?: string; product_name?: string; brands?: string[] | string }[];
-    };
-    const products: CatalogHit[] = [];
-    const seen = new Set<string>();
-    for (const row of body.hits ?? []) {
-      const name = String(row.product_name ?? "").trim();
-      if (!name) continue;
-      const brand = Array.isArray(row.brands)
-        ? String(row.brands[0] ?? "").trim()
-        : String(row.brands ?? "")
-            .split(",")[0]
-            ?.trim() ?? "";
-      const code = String(row.code ?? "");
-      const id = `${name}|${brand}`.toLocaleLowerCase("es-MX");
-      if (seen.has(id)) continue;
-      seen.add(id);
-      products.push({ code, name: name.slice(0, 80), brand: brand.slice(0, 80) });
-      if (products.length >= 6) break;
-    }
-    cache.set(key, { at: Date.now(), products });
-    if (cache.size > 50) {
-      const oldest = cache.keys().next().value;
-      if (oldest) cache.delete(oldest);
-    }
-    return { ok: true, products };
+    if (!answered) return { ok: false, error: "El catálogo público no respondió." };
+    cache.set(key, []);
+    return { ok: true, products: [] };
   });

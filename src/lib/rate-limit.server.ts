@@ -13,12 +13,27 @@ type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 const MAX_BUCKETS = 2000;
 
+/** Deja solo caracteres de IP/host y un tope de largo (nada de basura en la llave). */
+function cleanIp(value: string): string {
+  return value.replace(/[^0-9a-fA-F:.]/g, "").slice(0, 64) || "local";
+}
+
+/**
+ * IP del cliente para contar permisos. Se prefieren los encabezados que pone
+ * la plataforma (Vercel reescribe `x-vercel-forwarded-for`; el proxy, `x-real-ip`)
+ * sobre un `x-forwarded-for` que el cliente podría intentar inventar. Aun así
+ * esto es una defensa en profundidad: el límite es por instancia y su objetivo
+ * es frenar abuso casual, no identificar a nadie (no se guarda en ningún lado).
+ */
 function clientIp(): string {
   const request = getRequest();
   if (!request) return "local";
-  const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim().slice(0, 64);
-  return (request.headers.get("x-real-ip") ?? "local").slice(0, 64);
+  const headers = request.headers;
+  const platform = headers.get("x-vercel-forwarded-for") ?? headers.get("x-real-ip");
+  if (platform) return cleanIp(platform.split(",")[0]!.trim());
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) return cleanIp(forwarded.split(",")[0]!.trim());
+  return "local";
 }
 
 function prune(now: number): void {

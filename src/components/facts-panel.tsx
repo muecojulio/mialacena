@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Leaf, Loader2, TriangleAlert } from "lucide-react";
+import { ExternalLink, Leaf, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
+import { cachedRequest } from "@/lib/client-cache";
 import { getProductFacts } from "@/lib/facts.functions";
-import { GRADE_COLORS, offWebUrl, type OffProduct } from "@/lib/off";
+import { getMxnRate } from "@/lib/fx.functions";
+import { fxDateLabel, toMxn, type FxRate } from "@/lib/fx";
+import { GRADE_COLORS, offWebUrlFor, type OffProduct } from "@/lib/off";
 import { getPublicPrices } from "@/lib/prices.functions";
 import type { PublicPriceSummary } from "@/lib/open-prices";
 import { plural, stamp } from "@/lib/money";
+import { productSourceLabel } from "@/lib/product-sources";
 import type { PantryItem } from "@/lib/types";
+
+const FACTS_TTL_MS = 6 * 60 * 60 * 1000;
+const PRICES_TTL_MS = 60 * 60 * 1000;
+const FX_TTL_MS = 6 * 60 * 60 * 1000;
 
 const NOVA_LABELS: Record<number, string> = {
   1: "Sin procesar (NOVA 1)",
@@ -52,20 +60,31 @@ export function FactsPanel({
   const [prices, setPrices] = useState<PublicPriceSummary | null>(null);
   const [pricesBusy, setPricesBusy] = useState(false);
   const [pricesNote, setPricesNote] = useState("");
+  const [fx, setFx] = useState<FxRate | null>(null);
 
   useEffect(() => {
     setPrices(null);
     setPricesNote("");
+    setFx(null);
     if (barcode.length < 5 || facts) return;
     let live = true;
     setLoading(true);
     setNote("");
-    void getProductFacts({ data: { barcode } }).then((result) => {
-      if (!live) return;
-      setLoading(false);
-      if (result.ok) onApply(result.product);
-      else setNote(result.error);
-    });
+    void cachedRequest(`facts:${barcode}`, FACTS_TTL_MS, () =>
+      getProductFacts({ data: { barcode } }),
+    )
+      .then((result) => {
+        if (!live) return;
+        setLoading(false);
+        if (result.ok) onApply(result.product);
+        else setNote(result.error);
+      })
+      .catch(() => {
+        if (live) {
+          setLoading(false);
+          setNote("La ficha pública no respondió. Tu despensa sigue como está.");
+        }
+      });
     return () => {
       live = false;
     };
@@ -73,13 +92,36 @@ export function FactsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barcode, facts?.code]);
 
+  // Tipo de cambio solo si el precio público viene en otra moneda.
+  useEffect(() => {
+    if (!prices || prices.currency === "MXN") {
+      setFx(null);
+      return;
+    }
+    let live = true;
+    void cachedRequest(`fx:${prices.currency}`, FX_TTL_MS, () =>
+      getMxnRate({ data: { currency: prices.currency } }),
+    )
+      .then((result) => {
+        if (live && result.ok) setFx(result.quote);
+      })
+      .catch(() => {
+        /* sin tipo de cambio: se muestra solo la moneda original */
+      });
+    return () => {
+      live = false;
+    };
+  }, [prices]);
+
   if (barcode.length < 5) return null;
 
   async function loadPrices() {
     setPricesBusy(true);
     setPricesNote("");
     try {
-      const result = await getPublicPrices({ data: { barcode } });
+      const result = await cachedRequest(`prices:${barcode}`, PRICES_TTL_MS, () =>
+        getPublicPrices({ data: { barcode } }),
+      );
       if (result.ok) setPrices(result.summary);
       else setPricesNote(result.error);
     } catch {
@@ -94,10 +136,10 @@ export function FactsPanel({
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
           <Leaf className="size-3.5 text-sage" />
-          Ficha pública · Open Food Facts
+          Ficha pública · {productSourceLabel(facts?.source ?? "openfoodfacts")}
         </p>
         <a
-          href={offWebUrl(barcode)}
+          href={offWebUrlFor(facts?.source ?? "openfoodfacts", barcode)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11px] font-medium text-stone underline-offset-2 hover:underline"
@@ -197,6 +239,19 @@ export function FactsPanel({
               ? ` · último en ${prices.latest.place}${prices.latest.country ? ` (${prices.latest.country})` : ""}`
               : ""}
             . Es referencia mundial de Open Prices, no el precio de tu súper.
+            {fx && fx.rate > 0 && (
+              <>
+                {" "}
+                <strong className="text-ink">
+                  ≈ {money(toMxn(prices.median, fx.rate), "MXN")}
+                </strong>{" "}
+                al tipo de cambio {fx.source === "env" ? "configurado" : "del BCE"}
+                {fx.date ? ` (${fxDateLabel(fx.date)})` : ""}. Solo orientativo.
+              </>
+            )}
+            {prices.currency !== "MXN" && !fx && (
+              <span className="text-stone"> No pude traer el tipo de cambio; queda en su moneda.</span>
+            )}
           </p>
         ) : (
           <div className="flex items-center justify-between gap-2">
@@ -207,7 +262,11 @@ export function FactsPanel({
               disabled={pricesBusy}
               className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-card px-2.5 py-1.5 text-xs font-semibold text-ink transition-transform active:scale-[0.96] disabled:opacity-50"
             >
-              {pricesBusy && <Loader2 className="size-3 animate-spin" />}
+              {pricesBusy ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3" />
+              )}
               Ver precios
             </button>
           </div>
